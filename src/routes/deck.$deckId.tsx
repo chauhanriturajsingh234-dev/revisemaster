@@ -137,7 +137,7 @@ function DeckPage() {
               )}
             </div>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 w-full sm:w-auto">
             <Button
               variant="ghost"
               size="icon"
@@ -149,11 +149,11 @@ function DeckPage() {
             </Button>
             <Button
               size="lg"
-              className="gap-2 rounded-full px-6"
+              className="gap-2 rounded-full px-6 flex-1 sm:flex-initial"
               disabled={cards.length === 0}
               onClick={() => navigate({ to: "/deck/$deckId/study", params: { deckId: deck.id } })}
             >
-              <Play className="h-4 w-4 fill-current" /> Study now
+              <Play className="h-4 w-4 fill-current" /> Study now ({cards.length})
             </Button>
           </div>
         </motion.div>
