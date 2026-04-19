@@ -3,10 +3,7 @@
 // deno-lint-ignore-file no-explicit-any
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import * as mammoth from "https://esm.sh/mammoth@1.8.0";
-import { getDocument, GlobalWorkerOptions } from "https://esm.sh/pdfjs-dist@4.0.379/legacy/build/pdf.mjs";
-
-// pdfjs in Deno: disable worker
-(GlobalWorkerOptions as any).workerSrc = "";
+import { extractText as extractPdfText, getDocumentProxy } from "https://esm.sh/unpdf@0.12.1";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -25,16 +22,9 @@ async function extractText(bytes: Uint8Array, mime: string, name: string): Promi
     return result.value || "";
   }
   if (mime === "application/pdf" || lower.endsWith(".pdf")) {
-    const pdf = await getDocument({ data: bytes, useWorkerFetch: false, isEvalSupported: false, useSystemFonts: true }).promise;
-    let out = "";
-    const pages = Math.min(pdf.numPages, 50);
-    for (let i = 1; i <= pages; i++) {
-      const page = await pdf.getPage(i);
-      const content = await page.getTextContent();
-      out += content.items.map((it: any) => it.str).join(" ") + "\n\n";
-      if (out.length > MAX_TEXT) break;
-    }
-    return out;
+    const pdf = await getDocumentProxy(bytes);
+    const { text } = await extractPdfText(pdf, { mergePages: true });
+    return (Array.isArray(text) ? text.join("\n\n") : text).slice(0, MAX_TEXT);
   }
   throw new Error("Unsupported file type");
 }
