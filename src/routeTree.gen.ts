@@ -10,33 +10,52 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as DeckDeckIdRouteImport } from './routes/deck.$deckId'
+import { Route as DeckDeckIdStudyRouteImport } from './routes/deck.$deckId.study'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const DeckDeckIdRoute = DeckDeckIdRouteImport.update({
+  id: '/deck/$deckId',
+  path: '/deck/$deckId',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DeckDeckIdStudyRoute = DeckDeckIdStudyRouteImport.update({
+  id: '/study',
+  path: '/study',
+  getParentRoute: () => DeckDeckIdRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/deck/$deckId': typeof DeckDeckIdRouteWithChildren
+  '/deck/$deckId/study': typeof DeckDeckIdStudyRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/deck/$deckId': typeof DeckDeckIdRouteWithChildren
+  '/deck/$deckId/study': typeof DeckDeckIdStudyRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/deck/$deckId': typeof DeckDeckIdRouteWithChildren
+  '/deck/$deckId/study': typeof DeckDeckIdStudyRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/'
+  fullPaths: '/' | '/deck/$deckId' | '/deck/$deckId/study'
   fileRoutesByTo: FileRoutesByTo
-  to: '/'
-  id: '__root__' | '/'
+  to: '/' | '/deck/$deckId' | '/deck/$deckId/study'
+  id: '__root__' | '/' | '/deck/$deckId' | '/deck/$deckId/study'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  DeckDeckIdRoute: typeof DeckDeckIdRouteWithChildren
 }
 
 declare module '@tanstack/react-router' {
@@ -48,21 +67,39 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/deck/$deckId': {
+      id: '/deck/$deckId'
+      path: '/deck/$deckId'
+      fullPath: '/deck/$deckId'
+      preLoaderRoute: typeof DeckDeckIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/deck/$deckId/study': {
+      id: '/deck/$deckId/study'
+      path: '/study'
+      fullPath: '/deck/$deckId/study'
+      preLoaderRoute: typeof DeckDeckIdStudyRouteImport
+      parentRoute: typeof DeckDeckIdRoute
+    }
   }
 }
 
+interface DeckDeckIdRouteChildren {
+  DeckDeckIdStudyRoute: typeof DeckDeckIdStudyRoute
+}
+
+const DeckDeckIdRouteChildren: DeckDeckIdRouteChildren = {
+  DeckDeckIdStudyRoute: DeckDeckIdStudyRoute,
+}
+
+const DeckDeckIdRouteWithChildren = DeckDeckIdRoute._addFileChildren(
+  DeckDeckIdRouteChildren,
+)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  DeckDeckIdRoute: DeckDeckIdRouteWithChildren,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { createStart } from '@tanstack/react-start'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-  }
-}
