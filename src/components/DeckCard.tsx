@@ -1,11 +1,10 @@
 import { Link } from "@tanstack/react-router";
 import { motion } from "framer-motion";
-import type { Deck } from "@/lib/storage";
-import { dueCount } from "@/lib/storage";
+import type { DeckWithStats } from "@/lib/storage";
 
-export function DeckCard({ deck, index }: { deck: Deck; index: number }) {
-  const due = dueCount(deck);
-  const total = deck.cards.length;
+export function DeckCard({ deck, index }: { deck: DeckWithStats; index: number }) {
+  const total = deck.cardCount;
+  const due = deck.dueCount;
   const progress = total === 0 ? 0 : Math.round(((total - due) / total) * 100);
 
   return (

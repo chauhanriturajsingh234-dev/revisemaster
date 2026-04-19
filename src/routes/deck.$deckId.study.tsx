@@ -1,17 +1,12 @@
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate, Navigate } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { SiteHeader } from "@/components/SiteHeader";
 import { Button } from "@/components/ui/button";
-import {
-  loadDecks,
-  saveDecks,
-  scheduleCard,
-  type Card,
-  type Deck,
-  type Grade,
-} from "@/lib/storage";
+import { getDeck, listCards, gradeCard, type Card, type Deck, type Grade } from "@/lib/storage";
+import { useAuth } from "@/hooks/useAuth";
 import { ArrowLeft, Check } from "lucide-react";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/deck/$deckId/study")({
   component: StudyPage,
@@ -26,47 +21,43 @@ const GRADES: { key: Grade; label: string; hint: string; className: string; shor
 
 function StudyPage() {
   const { deckId } = Route.useParams();
+  const { user, loading } = useAuth();
   const navigate = useNavigate();
-  const [decks, setDecks] = useState<Deck[]>([]);
+  const [deck, setDeck] = useState<Deck | null>(null);
   const [queue, setQueue] = useState<Card[]>([]);
   const [flipped, setFlipped] = useState(false);
   const [reviewed, setReviewed] = useState(0);
 
   useEffect(() => {
-    const all = loadDecks();
-    setDecks(all);
-    const d = all.find((x) => x.id === deckId);
-    if (d) {
-      const now = Date.now();
-      const due = d.cards.filter((c) => c.due <= now);
-      // If nothing due, study all (preview mode)
-      setQueue(due.length > 0 ? due : d.cards);
-    }
-  }, [deckId]);
+    if (!user) return;
+    Promise.all([getDeck(deckId), listCards(deckId)])
+      .then(([d, cs]) => {
+        setDeck(d);
+        const nowISO = new Date().toISOString();
+        const due = cs.filter((c) => c.due_at <= nowISO);
+        setQueue(due.length > 0 ? due : cs);
+      })
+      .catch((e) => toast.error(e.message));
+  }, [deckId, user]);
 
-  const deck = decks.find((d) => d.id === deckId);
   const current = queue[0];
   const remaining = queue.length;
 
   const grade = useCallback(
-    (g: Grade) => {
-      if (!current || !deck) return;
-      const updatedCard = scheduleCard(current, g);
-      const updatedDeck: Deck = {
-        ...deck,
-        cards: deck.cards.map((c) => (c.id === current.id ? updatedCard : c)),
-      };
-      const nextDecks = decks.map((d) => (d.id === deck.id ? updatedDeck : d));
-      setDecks(nextDecks);
-      saveDecks(nextDecks);
-      setQueue((q) => q.slice(1));
-      setReviewed((n) => n + 1);
-      setFlipped(false);
+    async (g: Grade) => {
+      if (!current) return;
+      try {
+        await gradeCard(current, g);
+        setQueue((q) => q.slice(1));
+        setReviewed((n) => n + 1);
+        setFlipped(false);
+      } catch (e) {
+        toast.error(e instanceof Error ? e.message : "Failed to save");
+      }
     },
-    [current, deck, decks],
+    [current],
   );
 
-  // Keyboard shortcuts
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === " " || e.key === "Enter") {
@@ -89,6 +80,8 @@ function StudyPage() {
     const total = reviewed + remaining;
     return total === 0 ? 0 : (reviewed / total) * 100;
   }, [reviewed, remaining]);
+
+  if (!loading && !user) return <Navigate to="/auth" />;
 
   if (!deck) {
     return (
@@ -119,7 +112,6 @@ function StudyPage() {
           </div>
         </div>
 
-        {/* Progress bar */}
         <div className="h-1 rounded-full bg-muted overflow-hidden mb-12">
           <motion.div
             className="h-full bg-primary"
@@ -151,7 +143,6 @@ function StudyPage() {
           </motion.div>
         ) : (
           <>
-            {/* Flashcard */}
             <div className="flex-1 flex items-center justify-center mb-10">
               <AnimatePresence mode="wait">
                 <motion.div
@@ -170,7 +161,6 @@ function StudyPage() {
                     <div
                       className={`flashcard-inner relative w-full min-h-[340px] ${flipped ? "is-flipped" : ""}`}
                     >
-                      {/* Front */}
                       <div className="flashcard-face absolute inset-0 rounded-3xl border border-border bg-card shadow-soft p-10 flex flex-col">
                         <span className="text-xs uppercase tracking-widest text-muted-foreground mb-6">
                           Question
@@ -184,7 +174,6 @@ function StudyPage() {
                           Press <kbd className="px-1.5 py-0.5 rounded bg-muted">Space</kbd> to reveal
                         </span>
                       </div>
-                      {/* Back */}
                       <div className="flashcard-face flashcard-back absolute inset-0 rounded-3xl border border-primary/30 bg-card shadow-[var(--shadow-glow)] p-10 flex flex-col">
                         <span className="text-xs uppercase tracking-widest text-primary mb-6">
                           Answer
@@ -202,7 +191,6 @@ function StudyPage() {
               </AnimatePresence>
             </div>
 
-            {/* Grade buttons */}
             <motion.div
               initial={false}
               animate={{ opacity: flipped ? 1 : 0.35, y: flipped ? 0 : 8 }}
