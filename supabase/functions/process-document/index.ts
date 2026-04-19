@@ -11,6 +11,43 @@ const corsHeaders = {
 };
 
 const MAX_TEXT = 60_000;
+const MIN_TEXT_QUALITY = 200; // chars; below this we treat the PDF as scanned
+
+function bytesToBase64(bytes: Uint8Array): string {
+  let binary = "";
+  const chunk = 0x8000;
+  for (let i = 0; i < bytes.length; i += chunk) {
+    binary += String.fromCharCode(...bytes.subarray(i, i + chunk));
+  }
+  return btoa(binary);
+}
+
+async function ocrPdfWithVision(bytes: Uint8Array): Promise<string> {
+  const apiKey = Deno.env.get("LOVABLE_API_KEY");
+  if (!apiKey) throw new Error("LOVABLE_API_KEY not configured");
+  const b64 = bytesToBase64(bytes);
+  const res = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
+    body: JSON.stringify({
+      model: "google/gemini-2.5-flash",
+      messages: [
+        {
+          role: "user",
+          content: [
+            { type: "text", text: "Transcribe ALL readable text, formulas, and notes from this PDF. Preserve structure (headings, lists, equations). Output plain text only." },
+            { type: "image_url", image_url: { url: `data:application/pdf;base64,${b64}` } },
+          ],
+        },
+      ],
+    }),
+  });
+  if (res.status === 429) throw new Error("AI rate limit reached. Please wait a moment.");
+  if (res.status === 402) throw new Error("AI credits exhausted. Add credits in workspace settings.");
+  if (!res.ok) throw new Error(`Vision OCR error: ${res.status}`);
+  const data = await res.json();
+  return (data.choices?.[0]?.message?.content ?? "").slice(0, MAX_TEXT);
+}
 
 async function extractText(bytes: Uint8Array, mime: string, name: string): Promise<string> {
   const lower = name.toLowerCase();
@@ -22,9 +59,22 @@ async function extractText(bytes: Uint8Array, mime: string, name: string): Promi
     return result.value || "";
   }
   if (mime === "application/pdf" || lower.endsWith(".pdf")) {
-    const pdf = await getDocumentProxy(bytes);
-    const { text } = await extractPdfText(pdf, { mergePages: true });
-    return (Array.isArray(text) ? text.join("\n\n") : text).slice(0, MAX_TEXT);
+    let nativeText = "";
+    try {
+      const pdf = await getDocumentProxy(bytes);
+      const { text } = await extractPdfText(pdf, { mergePages: true });
+      nativeText = (Array.isArray(text) ? text.join("\n\n") : text) ?? "";
+    } catch (e) {
+      console.warn("Native PDF extract failed:", e instanceof Error ? e.message : e);
+    }
+    const cleaned = nativeText.replace(/\s+/g, " ").trim();
+    if (cleaned.length >= MIN_TEXT_QUALITY) {
+      return nativeText.slice(0, MAX_TEXT);
+    }
+    console.log(`Native extraction weak (${cleaned.length} chars). Falling back to vision OCR.`);
+    const ocr = await ocrPdfWithVision(bytes);
+    if (ocr.trim().length < 50) throw new Error("Could not extract readable text from PDF.");
+    return ocr;
   }
   throw new Error("Unsupported file type");
 }
