@@ -102,29 +102,30 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-  const anonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
   const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
-  // Authed client (RLS as user) for permission check
-  const userClient = createClient(supabaseUrl, anonKey, {
-    global: { headers: { Authorization: req.headers.get("Authorization") ?? "" } },
-  });
   const admin = createClient(supabaseUrl, serviceKey);
 
   let documentId = "";
   try {
+    const authHeader = req.headers.get("Authorization") ?? "";
+    const token = authHeader.replace(/^Bearer\s+/i, "");
+    if (!token) throw new Error("Not authenticated");
+
+    // Validate token via admin client (handles ES256/asymmetric JWTs correctly)
+    const { data: { user }, error: userErr } = await admin.auth.getUser(token);
+    if (userErr || !user) throw new Error("Not authenticated");
+
     const body = await req.json();
     documentId = String(body.documentId ?? "");
     if (!documentId) throw new Error("documentId required");
 
-    const { data: { user }, error: userErr } = await userClient.auth.getUser();
-    if (userErr || !user) throw new Error("Not authenticated");
-
-    // Read doc as user (RLS enforces ownership)
-    const { data: doc, error: docErr } = await userClient
+    // Read doc with admin client, scoped by user_id for ownership
+    const { data: doc, error: docErr } = await admin
       .from("documents")
       .select("id, user_id, filename, storage_path, mime_type")
       .eq("id", documentId)
+      .eq("user_id", user.id)
       .single();
     if (docErr || !doc) throw new Error("Document not found");
 
