@@ -1,4 +1,4 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, useNavigate, Navigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { SiteHeader } from "@/components/SiteHeader";
@@ -14,8 +14,10 @@ import {
   DialogTrigger,
   DialogFooter,
 } from "@/components/ui/dialog";
-import { loadDecks, saveDecks, uid, type Deck } from "@/lib/storage";
-import { Plus, Sparkles } from "lucide-react";
+import { listDecks, createDeck, type DeckWithStats } from "@/lib/storage";
+import { useAuth } from "@/hooks/useAuth";
+import { Plus, Sparkles, Upload } from "lucide-react";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -24,12 +26,12 @@ export const Route = createFileRoute("/")({
       {
         name: "description",
         content:
-          "Master any subject with active recall flashcards and spaced repetition. Build decks, study daily, retain forever.",
+          "Master any subject with active recall flashcards and spaced repetition. Upload notes, auto-generate quizzes, retain forever.",
       },
       { property: "og:title", content: "ReviseMaster — Study smarter, remember longer" },
       {
         property: "og:description",
-        content: "Active recall flashcards with spaced repetition that adapts to you.",
+        content: "Upload your study notes and let AI generate flashcards. Spaced repetition does the rest.",
       },
     ],
   }),
@@ -37,45 +39,48 @@ export const Route = createFileRoute("/")({
 });
 
 function Index() {
+  const { user, loading } = useAuth();
   const navigate = useNavigate();
-  const [decks, setDecks] = useState<Deck[]>([]);
+  const [decks, setDecks] = useState<DeckWithStats[]>([]);
+  const [loadingDecks, setLoadingDecks] = useState(true);
   const [open, setOpen] = useState(false);
   const [name, setName] = useState("");
   const [desc, setDesc] = useState("");
+  const [creating, setCreating] = useState(false);
 
   useEffect(() => {
-    setDecks(loadDecks());
-  }, []);
+    if (!user) return;
+    listDecks()
+      .then(setDecks)
+      .catch((e) => toast.error(e.message))
+      .finally(() => setLoadingDecks(false));
+  }, [user]);
 
-  const totalCards = decks.reduce((s, d) => s + d.cards.length, 0);
-  const totalDue = decks.reduce(
-    (s, d) => s + d.cards.filter((c) => c.due <= Date.now()).length,
-    0,
-  );
+  if (!loading && !user) return <Navigate to="/auth" />;
 
-  const createDeck = () => {
+  const totalCards = decks.reduce((s, d) => s + d.cardCount, 0);
+  const totalDue = decks.reduce((s, d) => s + d.dueCount, 0);
+
+  const handleCreate = async () => {
     if (!name.trim()) return;
-    const deck: Deck = {
-      id: uid(),
-      name: name.trim(),
-      description: desc.trim(),
-      createdAt: Date.now(),
-      cards: [],
-    };
-    const next = [deck, ...decks];
-    setDecks(next);
-    saveDecks(next);
-    setName("");
-    setDesc("");
-    setOpen(false);
-    navigate({ to: "/deck/$deckId", params: { deckId: deck.id } });
+    setCreating(true);
+    try {
+      const deck = await createDeck({ name: name.trim(), description: desc.trim() });
+      setName("");
+      setDesc("");
+      setOpen(false);
+      navigate({ to: "/deck/$deckId", params: { deckId: deck.id } });
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Failed to create deck");
+    } finally {
+      setCreating(false);
+    }
   };
 
   return (
     <div className="min-h-screen bg-paper">
       <SiteHeader />
       <main className="mx-auto max-w-6xl px-6 py-16">
-        {/* Hero */}
         <motion.section
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
@@ -92,11 +97,20 @@ function Index() {
             <span className="text-primary italic">Remember more.</span>
           </h1>
           <p className="mt-6 text-lg text-muted-foreground max-w-xl">
-            ReviseMaster uses spaced repetition to surface the right card at the right moment —
-            so knowledge sticks the first time, and stays.
+            Upload your notes, let AI build the flashcards, and study with spaced repetition that
+            knows exactly when you'll forget.
           </p>
 
-          <div className="mt-8 flex flex-wrap items-center gap-4">
+          <div className="mt-8 flex flex-wrap items-center gap-3">
+            <Button
+              size="lg"
+              variant="outline"
+              className="gap-2 rounded-full px-6"
+              onClick={() => navigate({ to: "/documents" })}
+            >
+              <Upload className="h-4 w-4" />
+              Upload notes
+            </Button>
             <Dialog open={open} onOpenChange={setOpen}>
               <DialogTrigger asChild>
                 <Button size="lg" className="gap-2 rounded-full px-6">
@@ -116,6 +130,7 @@ function Index() {
                       value={name}
                       onChange={(e) => setName(e.target.value)}
                       autoFocus
+                      maxLength={100}
                     />
                   </div>
                   <div className="space-y-2">
@@ -125,6 +140,7 @@ function Index() {
                       value={desc}
                       onChange={(e) => setDesc(e.target.value)}
                       rows={3}
+                      maxLength={500}
                     />
                   </div>
                 </div>
@@ -132,12 +148,14 @@ function Index() {
                   <Button variant="ghost" onClick={() => setOpen(false)}>
                     Cancel
                   </Button>
-                  <Button onClick={createDeck}>Create deck</Button>
+                  <Button onClick={handleCreate} disabled={creating}>
+                    {creating ? "Creating…" : "Create deck"}
+                  </Button>
                 </DialogFooter>
               </DialogContent>
             </Dialog>
 
-            <div className="flex items-center gap-6 text-sm">
+            <div className="ml-2 flex items-center gap-6 text-sm">
               <Stat value={decks.length} label="decks" />
               <div className="h-6 w-px bg-border" />
               <Stat value={totalCards} label="cards" />
@@ -147,7 +165,6 @@ function Index() {
           </div>
         </motion.section>
 
-        {/* Decks grid */}
         <section>
           <div className="flex items-baseline justify-between mb-6">
             <h2 className="font-display text-2xl">Your decks</h2>
@@ -156,15 +173,22 @@ function Index() {
             </span>
           </div>
 
-          {decks.length === 0 ? (
+          {loadingDecks ? (
+            <div className="text-center text-muted-foreground py-12">Loading…</div>
+          ) : decks.length === 0 ? (
             <div className="rounded-2xl border border-dashed border-border bg-card/40 p-16 text-center">
               <p className="font-display text-xl mb-2">No decks yet</p>
               <p className="text-muted-foreground text-sm mb-6">
-                Create your first deck to start revising.
+                Upload a document to auto-generate one, or create a deck manually.
               </p>
-              <Button onClick={() => setOpen(true)} className="gap-2">
-                <Plus className="h-4 w-4" /> New deck
-              </Button>
+              <div className="flex justify-center gap-3">
+                <Button variant="outline" onClick={() => navigate({ to: "/documents" })} className="gap-2">
+                  <Upload className="h-4 w-4" /> Upload notes
+                </Button>
+                <Button onClick={() => setOpen(true)} className="gap-2">
+                  <Plus className="h-4 w-4" /> New deck
+                </Button>
+              </div>
             </div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
@@ -179,15 +203,7 @@ function Index() {
   );
 }
 
-function Stat({
-  value,
-  label,
-  highlight,
-}: {
-  value: number;
-  label: string;
-  highlight?: boolean;
-}) {
+function Stat({ value, label, highlight }: { value: number; label: string; highlight?: boolean }) {
   return (
     <div className="flex items-baseline gap-1.5">
       <span

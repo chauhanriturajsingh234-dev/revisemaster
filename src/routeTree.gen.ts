@@ -9,10 +9,22 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as DocumentsRouteImport } from './routes/documents'
+import { Route as AuthRouteImport } from './routes/auth'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as DeckDeckIdRouteImport } from './routes/deck.$deckId'
 import { Route as DeckDeckIdStudyRouteImport } from './routes/deck.$deckId.study'
 
+const DocumentsRoute = DocumentsRouteImport.update({
+  id: '/documents',
+  path: '/documents',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthRoute = AuthRouteImport.update({
+  id: '/auth',
+  path: '/auth',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
@@ -31,35 +43,68 @@ const DeckDeckIdStudyRoute = DeckDeckIdStudyRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/auth': typeof AuthRoute
+  '/documents': typeof DocumentsRoute
   '/deck/$deckId': typeof DeckDeckIdRouteWithChildren
   '/deck/$deckId/study': typeof DeckDeckIdStudyRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/auth': typeof AuthRoute
+  '/documents': typeof DocumentsRoute
   '/deck/$deckId': typeof DeckDeckIdRouteWithChildren
   '/deck/$deckId/study': typeof DeckDeckIdStudyRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/auth': typeof AuthRoute
+  '/documents': typeof DocumentsRoute
   '/deck/$deckId': typeof DeckDeckIdRouteWithChildren
   '/deck/$deckId/study': typeof DeckDeckIdStudyRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/deck/$deckId' | '/deck/$deckId/study'
+  fullPaths:
+    | '/'
+    | '/auth'
+    | '/documents'
+    | '/deck/$deckId'
+    | '/deck/$deckId/study'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/deck/$deckId' | '/deck/$deckId/study'
-  id: '__root__' | '/' | '/deck/$deckId' | '/deck/$deckId/study'
+  to: '/' | '/auth' | '/documents' | '/deck/$deckId' | '/deck/$deckId/study'
+  id:
+    | '__root__'
+    | '/'
+    | '/auth'
+    | '/documents'
+    | '/deck/$deckId'
+    | '/deck/$deckId/study'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AuthRoute: typeof AuthRoute
+  DocumentsRoute: typeof DocumentsRoute
   DeckDeckIdRoute: typeof DeckDeckIdRouteWithChildren
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/documents': {
+      id: '/documents'
+      path: '/documents'
+      fullPath: '/documents'
+      preLoaderRoute: typeof DocumentsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/auth': {
+      id: '/auth'
+      path: '/auth'
+      fullPath: '/auth'
+      preLoaderRoute: typeof AuthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
@@ -98,8 +143,19 @@ const DeckDeckIdRouteWithChildren = DeckDeckIdRoute._addFileChildren(
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AuthRoute: AuthRoute,
+  DocumentsRoute: DocumentsRoute,
   DeckDeckIdRoute: DeckDeckIdRouteWithChildren,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { createStart } from '@tanstack/react-start'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+  }
+}

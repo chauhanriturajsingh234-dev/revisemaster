@@ -1,80 +1,110 @@
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate, Navigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { SiteHeader } from "@/components/SiteHeader";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import {
-  loadDecks,
-  saveDecks,
-  newCard,
-  dueCount,
+  getDeck,
+  listCards,
+  createCard,
+  deleteCard,
+  deleteDeck,
   type Deck,
+  type Card,
 } from "@/lib/storage";
+import { useAuth } from "@/hooks/useAuth";
 import { ArrowLeft, Plus, Play, Trash2 } from "lucide-react";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/deck/$deckId")({
   component: DeckPage,
-  notFoundComponent: () => (
-    <div className="min-h-screen flex items-center justify-center">
-      <p>Deck not found. <Link to="/" className="text-primary underline">Back</Link></p>
-    </div>
-  ),
 });
 
 function DeckPage() {
   const { deckId } = Route.useParams();
+  const { user, loading } = useAuth();
   const navigate = useNavigate();
-  const [decks, setDecks] = useState<Deck[]>([]);
+  const [deck, setDeck] = useState<Deck | null>(null);
+  const [cards, setCards] = useState<Card[]>([]);
+  const [busy, setBusy] = useState(true);
   const [front, setFront] = useState("");
   const [back, setBack] = useState("");
 
   useEffect(() => {
-    setDecks(loadDecks());
-  }, []);
+    if (!user) return;
+    setBusy(true);
+    Promise.all([getDeck(deckId), listCards(deckId)])
+      .then(([d, c]) => {
+        setDeck(d);
+        setCards(c);
+      })
+      .catch((e) => toast.error(e.message))
+      .finally(() => setBusy(false));
+  }, [deckId, user]);
 
-  const deck = decks.find((d) => d.id === deckId);
+  if (!loading && !user) return <Navigate to="/auth" />;
 
-  const persist = (next: Deck[]) => {
-    setDecks(next);
-    saveDecks(next);
+  const addCard = async () => {
+    if (!front.trim() || !back.trim()) return;
+    try {
+      const card = await createCard(deckId, front.trim(), back.trim());
+      setCards([card, ...cards]);
+      setFront("");
+      setBack("");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Failed to add card");
+    }
   };
+
+  const removeCard = async (cardId: string) => {
+    try {
+      await deleteCard(cardId);
+      setCards(cards.filter((c) => c.id !== cardId));
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Failed to delete");
+    }
+  };
+
+  const handleDeleteDeck = async () => {
+    if (!deck || !confirm(`Delete "${deck.name}"? This cannot be undone.`)) return;
+    try {
+      await deleteDeck(deck.id);
+      navigate({ to: "/" });
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Failed");
+    }
+  };
+
+  if (busy) {
+    return (
+      <div className="min-h-screen bg-paper">
+        <SiteHeader />
+        <main className="mx-auto max-w-3xl px-6 py-24 text-center text-muted-foreground">
+          Loading deck…
+        </main>
+      </div>
+    );
+  }
 
   if (!deck) {
     return (
       <div className="min-h-screen bg-paper">
         <SiteHeader />
         <main className="mx-auto max-w-3xl px-6 py-24 text-center">
-          <p className="text-muted-foreground">Loading deck…</p>
+          <p>
+            Deck not found.{" "}
+            <Link to="/" className="text-primary underline">
+              Back
+            </Link>
+          </p>
         </main>
       </div>
     );
   }
 
-  const addCard = () => {
-    if (!front.trim() || !back.trim()) return;
-    const updated: Deck = {
-      ...deck,
-      cards: [newCard(front.trim(), back.trim()), ...deck.cards],
-    };
-    persist(decks.map((d) => (d.id === deck.id ? updated : d)));
-    setFront("");
-    setBack("");
-  };
-
-  const deleteCard = (cardId: string) => {
-    const updated: Deck = { ...deck, cards: deck.cards.filter((c) => c.id !== cardId) };
-    persist(decks.map((d) => (d.id === deck.id ? updated : d)));
-  };
-
-  const deleteDeck = () => {
-    if (!confirm(`Delete "${deck.name}"? This cannot be undone.`)) return;
-    persist(decks.filter((d) => d.id !== deck.id));
-    navigate({ to: "/" });
-  };
-
-  const due = dueCount(deck);
+  const nowISO = new Date().toISOString();
+  const due = cards.filter((c) => c.due_at <= nowISO).length;
 
   return (
     <div className="min-h-screen bg-paper">
@@ -99,7 +129,7 @@ function DeckPage() {
               {deck.description || "No description"}
             </p>
             <div className="mt-4 flex items-center gap-4 text-sm text-muted-foreground">
-              <span>{deck.cards.length} cards</span>
+              <span>{cards.length} cards</span>
               {due > 0 && (
                 <span className="inline-flex items-center gap-1.5 rounded-full bg-primary/10 text-primary px-2.5 py-0.5 font-medium">
                   {due} due
@@ -111,7 +141,7 @@ function DeckPage() {
             <Button
               variant="ghost"
               size="icon"
-              onClick={deleteDeck}
+              onClick={handleDeleteDeck}
               className="text-muted-foreground hover:text-destructive"
               aria-label="Delete deck"
             >
@@ -120,7 +150,7 @@ function DeckPage() {
             <Button
               size="lg"
               className="gap-2 rounded-full px-6"
-              disabled={deck.cards.length === 0}
+              disabled={cards.length === 0}
               onClick={() => navigate({ to: "/deck/$deckId/study", params: { deckId: deck.id } })}
             >
               <Play className="h-4 w-4 fill-current" /> Study now
@@ -128,7 +158,6 @@ function DeckPage() {
           </div>
         </motion.div>
 
-        {/* Add card */}
         <section className="rounded-2xl border border-border bg-card p-6 shadow-soft mb-10">
           <h2 className="font-display text-xl mb-4">Add a flashcard</h2>
           <div className="grid md:grid-cols-2 gap-4">
@@ -141,6 +170,7 @@ function DeckPage() {
                 value={front}
                 onChange={(e) => setFront(e.target.value)}
                 rows={3}
+                maxLength={1000}
               />
             </div>
             <div className="space-y-2">
@@ -152,6 +182,7 @@ function DeckPage() {
                 value={back}
                 onChange={(e) => setBack(e.target.value)}
                 rows={3}
+                maxLength={2000}
               />
             </div>
           </div>
@@ -162,16 +193,15 @@ function DeckPage() {
           </div>
         </section>
 
-        {/* Card list */}
         <section>
           <h2 className="font-display text-xl mb-4">Cards</h2>
-          {deck.cards.length === 0 ? (
+          {cards.length === 0 ? (
             <div className="rounded-2xl border border-dashed border-border p-12 text-center text-muted-foreground">
               No cards yet. Add your first one above.
             </div>
           ) : (
             <ul className="space-y-3">
-              {deck.cards.map((c, i) => (
+              {cards.map((c, i) => (
                 <motion.li
                   key={c.id}
                   initial={{ opacity: 0, x: -8 }}
@@ -184,7 +214,7 @@ function DeckPage() {
                     <p className="text-sm text-muted-foreground">{c.back}</p>
                   </div>
                   <button
-                    onClick={() => deleteCard(c.id)}
+                    onClick={() => removeCard(c.id)}
                     className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive transition"
                     aria-label="Delete card"
                   >

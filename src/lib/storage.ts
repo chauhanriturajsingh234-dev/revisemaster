@@ -1,112 +1,149 @@
+import { supabase } from "@/integrations/supabase/client";
+
 export type Card = {
   id: string;
+  deck_id: string;
   front: string;
   back: string;
-  // SM-2 lite
-  ease: number; // ~2.5
-  interval: number; // days
+  ease: number;
+  interval_days: number;
   reps: number;
-  due: number; // timestamp ms
+  due_at: string; // ISO
 };
 
 export type Deck = {
   id: string;
   name: string;
   description: string;
-  createdAt: number;
-  cards: Card[];
+  created_at: string;
+  source_document_id: string | null;
 };
 
-const KEY = "revisemaster.decks.v1";
-
-export function loadDecks(): Deck[] {
-  if (typeof window === "undefined") return [];
-  try {
-    const raw = localStorage.getItem(KEY);
-    if (!raw) return seedDecks();
-    return JSON.parse(raw) as Deck[];
-  } catch {
-    return [];
-  }
-}
-
-export function saveDecks(decks: Deck[]) {
-  if (typeof window === "undefined") return;
-  localStorage.setItem(KEY, JSON.stringify(decks));
-}
-
-export function uid() {
-  return Math.random().toString(36).slice(2, 10) + Date.now().toString(36);
-}
-
-export function newCard(front: string, back: string): Card {
-  return {
-    id: uid(),
-    front,
-    back,
-    ease: 2.5,
-    interval: 0,
-    reps: 0,
-    due: Date.now(),
-  };
-}
+export type DeckWithStats = Deck & { cardCount: number; dueCount: number };
 
 export type Grade = "again" | "hard" | "good" | "easy";
 
-export function scheduleCard(card: Card, grade: Grade): Card {
-  let { ease, interval, reps } = card;
+// ---------- Decks ----------
+export async function listDecks(): Promise<DeckWithStats[]> {
+  const { data: decks, error } = await supabase
+    .from("decks")
+    .select("id, name, description, created_at, source_document_id")
+    .order("created_at", { ascending: false });
+  if (error) throw error;
+  if (!decks?.length) return [];
+
+  const { data: cards } = await supabase
+    .from("cards")
+    .select("deck_id, due_at")
+    .in("deck_id", decks.map((d) => d.id));
+
+  const nowISO = new Date().toISOString();
+  return decks.map((d) => {
+    const cs = (cards ?? []).filter((c) => c.deck_id === d.id);
+    return {
+      ...d,
+      cardCount: cs.length,
+      dueCount: cs.filter((c) => c.due_at <= nowISO).length,
+    };
+  });
+}
+
+export async function getDeck(deckId: string): Promise<Deck | null> {
+  const { data, error } = await supabase
+    .from("decks")
+    .select("id, name, description, created_at, source_document_id")
+    .eq("id", deckId)
+    .maybeSingle();
+  if (error) throw error;
+  return data;
+}
+
+export async function createDeck(input: { name: string; description?: string }): Promise<Deck> {
+  const { data: u } = await supabase.auth.getUser();
+  if (!u.user) throw new Error("Not authenticated");
+  const { data, error } = await supabase
+    .from("decks")
+    .insert({ user_id: u.user.id, name: input.name, description: input.description ?? "" })
+    .select("id, name, description, created_at, source_document_id")
+    .single();
+  if (error) throw error;
+  return data;
+}
+
+export async function deleteDeck(deckId: string) {
+  const { error } = await supabase.from("decks").delete().eq("id", deckId);
+  if (error) throw error;
+}
+
+// ---------- Cards ----------
+export async function listCards(deckId: string): Promise<Card[]> {
+  const { data, error } = await supabase
+    .from("cards")
+    .select("id, deck_id, front, back, ease, interval_days, reps, due_at")
+    .eq("deck_id", deckId)
+    .order("created_at", { ascending: false });
+  if (error) throw error;
+  return data ?? [];
+}
+
+export async function createCard(deckId: string, front: string, back: string): Promise<Card> {
+  const { data: u } = await supabase.auth.getUser();
+  if (!u.user) throw new Error("Not authenticated");
+  const { data, error } = await supabase
+    .from("cards")
+    .insert({ deck_id: deckId, user_id: u.user.id, front, back })
+    .select("id, deck_id, front, back, ease, interval_days, reps, due_at")
+    .single();
+  if (error) throw error;
+  return data;
+}
+
+export async function deleteCard(cardId: string) {
+  const { error } = await supabase.from("cards").delete().eq("id", cardId);
+  if (error) throw error;
+}
+
+// ---------- SM-2 lite ----------
+export function nextSchedule(card: Card, grade: Grade): Pick<Card, "ease" | "interval_days" | "reps" | "due_at"> {
+  let { ease, interval_days, reps } = card;
   const day = 86_400_000;
 
   if (grade === "again") {
-    reps = 0;
-    interval = 0;
-    ease = Math.max(1.3, ease - 0.2);
-    return { ...card, ease, interval, reps, due: Date.now() + 60_000 * 5 };
+    return {
+      ease: Math.max(1.3, ease - 0.2),
+      interval_days: 0,
+      reps: 0,
+      due_at: new Date(Date.now() + 5 * 60_000).toISOString(),
+    };
   }
 
   reps += 1;
   if (grade === "hard") {
     ease = Math.max(1.3, ease - 0.15);
-    interval = reps === 1 ? 1 : Math.round(interval * 1.2);
+    interval_days = reps === 1 ? 1 : Math.round(interval_days * 1.2);
   } else if (grade === "good") {
-    interval = reps === 1 ? 1 : reps === 2 ? 3 : Math.round(interval * ease);
+    interval_days = reps === 1 ? 1 : reps === 2 ? 3 : Math.round(interval_days * ease);
   } else {
     ease = ease + 0.15;
-    interval = reps === 1 ? 2 : reps === 2 ? 5 : Math.round(interval * ease * 1.3);
+    interval_days = reps === 1 ? 2 : reps === 2 ? 5 : Math.round(interval_days * ease * 1.3);
   }
 
-  return { ...card, ease, interval, reps, due: Date.now() + interval * day };
+  return {
+    ease,
+    interval_days,
+    reps,
+    due_at: new Date(Date.now() + interval_days * day).toISOString(),
+  };
 }
 
-export function dueCount(deck: Deck) {
-  const now = Date.now();
-  return deck.cards.filter((c) => c.due <= now).length;
-}
-
-function seedDecks(): Deck[] {
-  const decks: Deck[] = [
-    {
-      id: uid(),
-      name: "Cellular Biology",
-      description: "Organelles, membranes, and cell cycle essentials.",
-      createdAt: Date.now(),
-      cards: [
-        newCard("What organelle generates most ATP?", "The mitochondrion."),
-        newCard("Function of the rough ER?", "Synthesizes proteins via attached ribosomes."),
-        newCard("What phase precedes mitosis?", "G2 of interphase."),
-      ],
-    },
-    {
-      id: uid(),
-      name: "French Vocabulary",
-      description: "Everyday phrases and tricky verbs.",
-      createdAt: Date.now(),
-      cards: [
-        newCard("‘however’ in French", "cependant / toutefois"),
-        newCard("Conjugate ‘aller’ — nous", "nous allons"),
-      ],
-    },
-  ];
-  saveDecks(decks);
-  return decks;
+export async function gradeCard(card: Card, grade: Grade): Promise<Card> {
+  const next = nextSchedule(card, grade);
+  const { data, error } = await supabase
+    .from("cards")
+    .update(next)
+    .eq("id", card.id)
+    .select("id, deck_id, front, back, ease, interval_days, reps, due_at")
+    .single();
+  if (error) throw error;
+  return data;
 }
