@@ -41,6 +41,10 @@ export const Route = createRootRoute({
       { property: "og:description", content: "Master any subject with spaced repetition flashcards and active recall." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
+      { name: "twitter:title", content: "ReviseMaster — Active Recall Flashcards" },
+      { name: "twitter:description", content: "Master any subject with spaced repetition flashcards and active recall." },
+      { property: "og:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/4829ab15-657b-4780-99ff-0d4788bbe9f3/id-preview-97a28b21--6209a4bb-865a-4505-81b8-7ccdac3dd69f.lovable.app-1776595642410.png" },
+      { name: "twitter:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/4829ab15-657b-4780-99ff-0d4788bbe9f3/id-preview-97a28b21--6209a4bb-865a-4505-81b8-7ccdac3dd69f.lovable.app-1776595642410.png" },
     ],
     links: [
       { rel: "stylesheet", href: appCss },
