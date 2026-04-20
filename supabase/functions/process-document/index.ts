@@ -98,7 +98,7 @@ async function generateCards(text: string, filename: string) {
         },
         {
           role: "user",
-          content: `Source: ${filename}\n\nGenerate 10-15 flashcards covering the most important ideas in the following notes. Also propose a short deck name (3-6 words) and one-sentence description.\n\n---\n${trimmed}`,
+          content: `Source: ${filename}\n\nGenerate as many high-quality flashcards as the material supports — aim for 40-60 cards for a typical study document, covering ALL important facts, definitions, dates, names, places, schemes, and concepts in the notes. Do not skip sections. Also propose a short deck name (3-6 words) and one-sentence description.\n\n---\n${trimmed}`,
         },
       ],
       tools: [
@@ -120,8 +120,8 @@ async function generateCards(text: string, filename: string) {
                     required: ["front", "back"],
                     additionalProperties: false,
                   },
-                  minItems: 5,
-                  maxItems: 20,
+                  minItems: 10,
+                  maxItems: 80,
                 },
               },
               required: ["name", "description", "cards"],
@@ -205,7 +205,7 @@ Deno.serve(async (req) => {
     if (deckErr || !deck) throw new Error(deckErr?.message ?? "Failed to create deck");
 
     // Insert cards
-    const rows = generated.cards.slice(0, 20).map((c) => ({
+    const rows = generated.cards.slice(0, 80).map((c) => ({
       deck_id: deck.id,
       user_id: user.id,
       front: c.front.slice(0, 1000),
