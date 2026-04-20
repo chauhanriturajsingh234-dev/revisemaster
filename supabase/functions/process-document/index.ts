@@ -12,6 +12,7 @@ const corsHeaders = {
 
 const MAX_TEXT = 180_000;
 const MIN_TEXT_QUALITY = 200; // chars; below this we treat the PDF as scanned
+const AI_MAX_OUTPUT_TOKENS = 24_576;
 
 function bytesToBase64(bytes: Uint8Array): string {
   let binary = "";
@@ -94,13 +95,14 @@ async function generateCards(text: string, filename: string) {
         {
           role: "system",
           content:
-            "You generate concise, high-quality study flashcards using active-recall principles. Front = a focused question. Back = a precise, complete answer. Avoid trivia; prioritise key concepts, definitions, and relationships.",
+            "You generate concise, high-quality study flashcards using active-recall principles. Front = a focused question. Back = a precise, complete answer. Avoid trivia; prioritise key concepts, definitions, and relationships. Cover the full source, not just the opening sections. When the document is substantial, return a comprehensive deck instead of a short sample.",
         },
         {
           role: "user",
-          content: `Source: ${filename}\n\nGenerate as many high-quality flashcards as the material supports — aim for 40-60 cards for a typical study document, covering ALL important facts, definitions, dates, names, places, schemes, and concepts in the notes. Do not skip sections. Also propose a short deck name (3-6 words) and one-sentence description.\n\n---\n${trimmed}`,
+          content: `Source: ${filename}\n\nGenerate as many high-quality flashcards as the material supports — target 50-80 cards for a typical study document, and do not return fewer than 40 unless the source genuinely contains less material. Cover ALL important facts, definitions, dates, names, places, schemes, and concepts across the ENTIRE document, including later sections. Do not skip sections. Also propose a short deck name (3-6 words) and one-sentence description.\n\n---\n${trimmed}`,
         },
       ],
+      max_tokens: AI_MAX_OUTPUT_TOKENS,
       tools: [
         {
           type: "function",
