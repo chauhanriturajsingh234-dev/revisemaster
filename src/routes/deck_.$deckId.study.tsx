@@ -8,7 +8,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { ArrowLeft, Check } from "lucide-react";
 import { toast } from "sonner";
 
-export const Route = createFileRoute("/deck/$deckId/study")({
+export const Route = createFileRoute("/deck_/$deckId/study")({
   component: StudyPage,
 });
 
