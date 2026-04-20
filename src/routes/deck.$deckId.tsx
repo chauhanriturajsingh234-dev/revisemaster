@@ -147,14 +147,17 @@ function DeckPage() {
             >
               <Trash2 className="h-4 w-4" />
             </Button>
-            <Button
-              size="lg"
-              className="gap-2 rounded-full px-6 flex-1 sm:flex-initial"
-              disabled={cards.length === 0}
-              onClick={() => navigate({ to: "/deck/$deckId/study", params: { deckId: deck.id } })}
-            >
-              <Play className="h-4 w-4 fill-current" /> Study now ({cards.length})
-            </Button>
+            {cards.length > 0 ? (
+              <Button asChild size="lg" className="gap-2 rounded-full px-6 flex-1 sm:flex-initial">
+                <Link to="/deck/$deckId/study" params={{ deckId: deck.id }}>
+                  <Play className="h-4 w-4 fill-current" /> Study now ({cards.length})
+                </Link>
+              </Button>
+            ) : (
+              <Button size="lg" className="gap-2 rounded-full px-6 flex-1 sm:flex-initial" disabled>
+                <Play className="h-4 w-4 fill-current" /> Study now (0)
+              </Button>
+            )}
           </div>
         </motion.div>
 
