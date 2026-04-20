@@ -10,7 +10,7 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-const MAX_TEXT = 60_000;
+const MAX_TEXT = 180_000;
 const MIN_TEXT_QUALITY = 200; // chars; below this we treat the PDF as scanned
 
 function bytesToBase64(bytes: Uint8Array): string {
