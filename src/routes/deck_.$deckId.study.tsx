@@ -143,7 +143,7 @@ function StudyPage() {
           </motion.div>
         ) : (
           <>
-            <div className="flex-1 flex items-center justify-center mb-10">
+            <div className="relative z-0 flex-1 flex items-center justify-center mb-10">
               <AnimatePresence mode="wait">
                 <motion.div
                   key={current.id}
@@ -155,7 +155,7 @@ function StudyPage() {
                 >
                   <button
                     onClick={() => setFlipped((f) => !f)}
-                    className="w-full text-left"
+                    className="block w-full text-left touch-manipulation"
                     aria-label="Flip card"
                   >
                     <div
@@ -195,7 +195,7 @@ function StudyPage() {
               initial={false}
               animate={{ opacity: flipped ? 1 : 0.35, y: flipped ? 0 : 8 }}
               transition={{ duration: 0.25 }}
-              className="grid grid-cols-2 md:grid-cols-4 gap-3"
+              className="relative z-10 grid grid-cols-2 md:grid-cols-4 gap-3"
             >
               {GRADES.map((g) => (
                 <button
