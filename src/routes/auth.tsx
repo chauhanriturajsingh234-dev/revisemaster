@@ -26,7 +26,7 @@ export const Route = createFileRoute("/auth")({
 function AuthPage() {
   const navigate = useNavigate();
   const { user, loading } = useAuth();
-  const [mode, setMode] = useState<"signin" | "signup">("signin");
+  const [mode, setMode] = useState<"signin" | "signup" | "forgot">("signin");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
@@ -37,6 +37,29 @@ function AuthPage() {
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (mode === "forgot") {
+      const emailParsed = z.string().trim().email("Enter a valid email").max(255).safeParse(email);
+      if (!emailParsed.success) {
+        toast.error(emailParsed.error.issues[0]?.message ?? "Invalid email");
+        return;
+      }
+      setBusy(true);
+      try {
+        const { error } = await supabase.auth.resetPasswordForEmail(emailParsed.data, {
+          redirectTo: `${window.location.origin}/reset-password`,
+        });
+        if (error) throw error;
+        toast.success("Check your email for a reset link.");
+        setMode("signin");
+      } catch (err) {
+        toast.error(err instanceof Error ? err.message : "Could not send reset email");
+      } finally {
+        setBusy(false);
+      }
+      return;
+    }
+
     const parsed = schema.safeParse({ email, password });
     if (!parsed.success) {
       toast.error(parsed.error.issues[0]?.message ?? "Invalid input");
@@ -69,6 +92,15 @@ function AuthPage() {
     }
   };
 
+  const heading =
+    mode === "signin" ? "Welcome back" : mode === "signup" ? "Create your account" : "Reset your password";
+  const sub =
+    mode === "signin"
+      ? "Sign in to continue your study streak."
+      : mode === "signup"
+        ? "Start building decks that sync across your devices."
+        : "Enter your email and we'll send you a reset link.";
+
   return (
     <div className="min-h-screen bg-paper flex items-center justify-center px-6">
       <motion.div
@@ -86,14 +118,8 @@ function AuthPage() {
           </span>
         </Link>
 
-        <h1 className="font-display text-4xl mb-2 tracking-tight">
-          {mode === "signin" ? "Welcome back" : "Create your account"}
-        </h1>
-        <p className="text-muted-foreground mb-8">
-          {mode === "signin"
-            ? "Sign in to continue your study streak."
-            : "Start building decks that sync across your devices."}
-        </p>
+        <h1 className="font-display text-4xl mb-2 tracking-tight">{heading}</h1>
+        <p className="text-muted-foreground mb-8">{sub}</p>
 
         <form onSubmit={submit} className="space-y-4">
           <div className="space-y-2">
@@ -107,31 +133,64 @@ function AuthPage() {
               required
             />
           </div>
-          <div className="space-y-2">
-            <label className="text-sm font-medium">Password</label>
-            <Input
-              type="password"
-              autoComplete={mode === "signin" ? "current-password" : "new-password"}
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="At least 8 characters"
-              required
-              minLength={8}
-            />
-          </div>
+          {mode !== "forgot" && (
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <label className="text-sm font-medium">Password</label>
+                {mode === "signin" && (
+                  <button
+                    type="button"
+                    onClick={() => setMode("forgot")}
+                    className="text-xs text-primary hover:underline font-medium"
+                  >
+                    Forgot password?
+                  </button>
+                )}
+              </div>
+              <Input
+                type="password"
+                autoComplete={mode === "signin" ? "current-password" : "new-password"}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="At least 8 characters"
+                required
+                minLength={8}
+              />
+            </div>
+          )}
           <Button type="submit" size="lg" className="w-full rounded-full" disabled={busy}>
-            {busy ? "Please wait…" : mode === "signin" ? "Sign in" : "Create account"}
+            {busy
+              ? "Please wait…"
+              : mode === "signin"
+                ? "Sign in"
+                : mode === "signup"
+                  ? "Create account"
+                  : "Send reset link"}
           </Button>
         </form>
 
         <p className="mt-6 text-center text-sm text-muted-foreground">
-          {mode === "signin" ? "New here?" : "Already have an account?"}{" "}
-          <button
-            onClick={() => setMode(mode === "signin" ? "signup" : "signin")}
-            className="text-primary hover:underline font-medium"
-          >
-            {mode === "signin" ? "Create an account" : "Sign in"}
-          </button>
+          {mode === "forgot" ? (
+            <>
+              Remembered it?{" "}
+              <button
+                onClick={() => setMode("signin")}
+                className="text-primary hover:underline font-medium"
+              >
+                Back to sign in
+              </button>
+            </>
+          ) : (
+            <>
+              {mode === "signin" ? "New here?" : "Already have an account?"}{" "}
+              <button
+                onClick={() => setMode(mode === "signin" ? "signup" : "signin")}
+                className="text-primary hover:underline font-medium"
+              >
+                {mode === "signin" ? "Create an account" : "Sign in"}
+              </button>
+            </>
+          )}
         </p>
       </motion.div>
     </div>
