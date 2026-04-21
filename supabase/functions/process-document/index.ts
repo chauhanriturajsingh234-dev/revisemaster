@@ -142,11 +142,7 @@ async function requestChunkCards(chunk: string, filename: string, maxItems: numb
   const data = await res.json();
   const call = data.choices?.[0]?.message?.tool_calls?.[0];
   if (!call) throw new Error("AI did not return flashcards");
-  return JSON.parse(call.function.arguments) as {
-    name: string;
-    description: string;
-    cards: { front: string; back: string }[];
-  };
+  return JSON.parse(call.function.arguments) as GeneratedDeck;
 }
 
 Deno.serve(async (req) => {
@@ -190,7 +186,11 @@ Deno.serve(async (req) => {
     const text = await extractText(bytes, doc.mime_type, doc.filename);
     if (text.trim().length < 50) throw new Error("Document has too little text to generate cards.");
 
-    const generated = await generateCards(text, doc.filename);
+    const generated = await generateDeckFromDocumentText({
+      text,
+      filename: doc.filename,
+      requestChunkCards: ({ chunk, filename, maxItems }) => requestChunkCards(chunk, filename, maxItems),
+    });
 
     // Create deck
     const { data: deck, error: deckErr } = await admin
@@ -206,7 +206,7 @@ Deno.serve(async (req) => {
     if (deckErr || !deck) throw new Error(deckErr?.message ?? "Failed to create deck");
 
     // Insert cards
-    const rows = generated.cards.slice(0, 80).map((c) => ({
+    const rows = generated.cards.map((c) => ({
       deck_id: deck.id,
       user_id: user.id,
       front: c.front.slice(0, 1000),
