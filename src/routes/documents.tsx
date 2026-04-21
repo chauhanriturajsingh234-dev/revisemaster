@@ -21,7 +21,7 @@ type DocRow = {
 };
 
 const ACCEPTED = ".pdf,.docx,.txt";
-const MAX_BYTES = 10 * 1024 * 1024;
+const MAX_BYTES = 30 * 1024 * 1024;
 const ACCEPTED_MIMES = new Set([
   "application/pdf",
   "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
@@ -77,7 +77,7 @@ function DocumentsPage() {
   const handleUpload = async (file: File) => {
     if (!user) return;
     if (file.size > MAX_BYTES) {
-      toast.error("File is too large (10MB max).");
+      toast.error("File is too large (30MB max).");
       return;
     }
     if (!ACCEPTED_MIMES.has(file.type) && !/\.(pdf|docx|txt)$/i.test(file.name)) {
@@ -184,7 +184,7 @@ function DocumentsPage() {
             <Upload className="h-6 w-6" />
           </div>
           <p className="font-display text-xl mb-1">Drop a file here</p>
-          <p className="text-sm text-muted-foreground mb-5">PDF, DOCX, or TXT — up to 10MB</p>
+          <p className="text-sm text-muted-foreground mb-5">PDF, DOCX, or TXT — up to 30MB</p>
           <input
             ref={fileRef}
             type="file"

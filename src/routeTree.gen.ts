@@ -9,12 +9,18 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as DocumentsRouteImport } from './routes/documents'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as DeckDeckIdRouteImport } from './routes/deck.$deckId'
 import { Route as DeckDeckIdStudyRouteImport } from './routes/deck_.$deckId.study'
 
+const ResetPasswordRoute = ResetPasswordRouteImport.update({
+  id: '/reset-password',
+  path: '/reset-password',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const DocumentsRoute = DocumentsRouteImport.update({
   id: '/documents',
   path: '/documents',
@@ -45,6 +51,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/documents': typeof DocumentsRoute
+  '/reset-password': typeof ResetPasswordRoute
   '/deck/$deckId': typeof DeckDeckIdRoute
   '/deck/$deckId/study': typeof DeckDeckIdStudyRoute
 }
@@ -52,6 +59,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/documents': typeof DocumentsRoute
+  '/reset-password': typeof ResetPasswordRoute
   '/deck/$deckId': typeof DeckDeckIdRoute
   '/deck/$deckId/study': typeof DeckDeckIdStudyRoute
 }
@@ -60,6 +68,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/documents': typeof DocumentsRoute
+  '/reset-password': typeof ResetPasswordRoute
   '/deck/$deckId': typeof DeckDeckIdRoute
   '/deck_/$deckId/study': typeof DeckDeckIdStudyRoute
 }
@@ -69,15 +78,23 @@ export interface FileRouteTypes {
     | '/'
     | '/auth'
     | '/documents'
+    | '/reset-password'
     | '/deck/$deckId'
     | '/deck/$deckId/study'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/auth' | '/documents' | '/deck/$deckId' | '/deck/$deckId/study'
+  to:
+    | '/'
+    | '/auth'
+    | '/documents'
+    | '/reset-password'
+    | '/deck/$deckId'
+    | '/deck/$deckId/study'
   id:
     | '__root__'
     | '/'
     | '/auth'
     | '/documents'
+    | '/reset-password'
     | '/deck/$deckId'
     | '/deck_/$deckId/study'
   fileRoutesById: FileRoutesById
@@ -86,12 +103,20 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthRoute: typeof AuthRoute
   DocumentsRoute: typeof DocumentsRoute
+  ResetPasswordRoute: typeof ResetPasswordRoute
   DeckDeckIdRoute: typeof DeckDeckIdRoute
   DeckDeckIdStudyRoute: typeof DeckDeckIdStudyRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/reset-password': {
+      id: '/reset-password'
+      path: '/reset-password'
+      fullPath: '/reset-password'
+      preLoaderRoute: typeof ResetPasswordRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/documents': {
       id: '/documents'
       path: '/documents'
@@ -134,6 +159,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthRoute: AuthRoute,
   DocumentsRoute: DocumentsRoute,
+  ResetPasswordRoute: ResetPasswordRoute,
   DeckDeckIdRoute: DeckDeckIdRoute,
   DeckDeckIdStudyRoute: DeckDeckIdStudyRoute,
 }
