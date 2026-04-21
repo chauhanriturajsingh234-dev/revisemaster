@@ -4,15 +4,16 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import * as mammoth from "https://esm.sh/mammoth@1.8.0";
 import { extractText as extractPdfText, getDocumentProxy } from "https://esm.sh/unpdf@0.12.1";
+import { generateDeckFromDocumentText, type GeneratedDeck } from "./card-generation.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-const MAX_TEXT = 180_000;
+const MAX_TEXT = 600_000;
 const MIN_TEXT_QUALITY = 200; // chars; below this we treat the PDF as scanned
-const AI_MAX_OUTPUT_TOKENS = 24_576;
+const AI_MAX_OUTPUT_TOKENS = 32_768;
 
 function bytesToBase64(bytes: Uint8Array): string {
   let binary = "";
@@ -80,11 +81,9 @@ async function extractText(bytes: Uint8Array, mime: string, name: string): Promi
   throw new Error("Unsupported file type");
 }
 
-async function generateCards(text: string, filename: string) {
+async function requestChunkCards(chunk: string, filename: string, maxItems: number): Promise<GeneratedDeck> {
   const apiKey = Deno.env.get("LOVABLE_API_KEY");
   if (!apiKey) throw new Error("LOVABLE_API_KEY not configured");
-
-  const trimmed = text.slice(0, MAX_TEXT);
 
   const res = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
     method: "POST",
@@ -95,11 +94,11 @@ async function generateCards(text: string, filename: string) {
         {
           role: "system",
           content:
-            "You generate concise, high-quality study flashcards using active-recall principles. Front = a focused question. Back = a precise, complete answer FOLLOWED BY a fun memory aid on a new line prefixed with '🧠 Mnemonic: '. \n\nMNEMONIC STYLE — IMPORTANT: Write mnemonics in playful Hinglish (a natural blend of Hindi + English, written in Roman/English script — e.g. 'Yaad rakho: Mango = Aam, aur aam aadmi sabko pasand!'). Use Bollywood references, desi pop-culture, cricket, chai/samosa analogies, funny rhymes, tapori-style wordplay, or catchy filmi dialogues when they fit. Keep them short, vivid, and genuinely memorable — not cringe or forced. Hindi words should be in Roman script (no Devanagari) so everyone can read them. If a fact is trivially memorable, skip the mnemonic line. \n\nAvoid trivia; prioritise key concepts, definitions, dates, names, and relationships. Cover the full source, not just the opening sections. When the document is substantial, return a comprehensive deck instead of a short sample.",
+            "You generate concise, high-quality study flashcards using active-recall principles. Front = a focused question. Back = a precise, complete answer FOLLOWED BY a fun memory aid on a new line prefixed with '🧠 Mnemonic: '. \n\nMNEMONIC STYLE — IMPORTANT: Write mnemonics in playful Hinglish (a natural blend of Hindi + English, written in Roman/English script — e.g. 'Yaad rakho: Mango = Aam, aur aam aadmi sabko pasand!'). Use Bollywood references, desi pop-culture, cricket, chai/samosa analogies, funny rhymes, tapori-style wordplay, or catchy filmi dialogues when they fit. Keep them short, vivid, and genuinely memorable — not cringe or forced. Hindi words should be in Roman script (no Devanagari) so everyone can read them. If a fact is trivially memorable, skip the mnemonic line. \n\nAvoid trivia; prioritise key concepts, definitions, dates, names, places, processes, formulas, schemes, and relationships. Extract broadly from the entire supplied chunk, including details from later sections. Produce thorough coverage, not a short sample.",
         },
         {
           role: "user",
-          content: `Source: ${filename}\n\nGenerate as many high-quality flashcards as the material supports — target 50-80 cards for a typical study document, and do not return fewer than 40 unless the source genuinely contains less material. Cover ALL important facts, definitions, dates, names, places, schemes, and concepts across the ENTIRE document, including later sections. Do not skip sections. Also propose a short deck name (3-6 words) and one-sentence description.\n\n---\n${trimmed}`,
+          content: `Source: ${filename}\n\nThis is one chunk from a longer document. Generate up to ${maxItems} high-quality flashcards from this chunk alone, covering all important facts, definitions, dates, names, places, formulas, schemes, and concepts present here. Avoid duplicates, filler, and vague cards. Also propose a short deck name (3-6 words) and one-sentence description that fit the overall subject.\n\n---\n${chunk}`,
         },
       ],
       max_tokens: AI_MAX_OUTPUT_TOKENS,
@@ -122,8 +121,8 @@ async function generateCards(text: string, filename: string) {
                     required: ["front", "back"],
                     additionalProperties: false,
                   },
-                  minItems: 10,
-                  maxItems: 80,
+                  minItems: 8,
+                  maxItems: 90,
                 },
               },
               required: ["name", "description", "cards"],
