@@ -154,7 +154,8 @@ function StudyPage() {
                   className="w-full flashcard-perspective"
                 >
                   <button
-                    onClick={() => setFlipped((f) => !f)}
+                    type="button"
+                    onPointerUp={() => setFlipped((f) => !f)}
                     className="block w-full text-left touch-manipulation"
                     aria-label="Flip card"
                   >
@@ -195,14 +196,15 @@ function StudyPage() {
               initial={false}
               animate={{ opacity: flipped ? 1 : 0.35, y: flipped ? 0 : 8 }}
               transition={{ duration: 0.25 }}
-              className="relative z-10 grid grid-cols-2 md:grid-cols-4 gap-3"
+              className="relative isolate z-20 grid grid-cols-2 gap-3 md:grid-cols-4"
             >
               {GRADES.map((g) => (
                 <button
                   key={g.key}
-                  onClick={() => flipped && grade(g.key)}
+                  type="button"
+                  onPointerUp={() => flipped && grade(g.key)}
                   disabled={!flipped}
-                  className={`rounded-xl px-4 py-4 font-medium transition-all disabled:cursor-not-allowed ${g.className} disabled:opacity-50`}
+                  className={`touch-manipulation rounded-xl px-4 py-4 font-medium transition-all disabled:cursor-not-allowed ${g.className} disabled:opacity-50`}
                 >
                   <div className="flex items-center justify-between">
                     <span>{g.label}</span>
