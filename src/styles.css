@@ -168,6 +168,7 @@
 .flashcard-face {
   backface-visibility: hidden;
   -webkit-backface-visibility: hidden;
+  pointer-events: none;
 }
 
 .flashcard-back {
