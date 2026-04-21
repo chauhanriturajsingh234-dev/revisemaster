@@ -95,7 +95,7 @@ async function generateCards(text: string, filename: string) {
         {
           role: "system",
           content:
-            "You generate concise, high-quality study flashcards using active-recall principles. Front = a focused question. Back = a precise, complete answer. Avoid trivia; prioritise key concepts, definitions, and relationships. Cover the full source, not just the opening sections. When the document is substantial, return a comprehensive deck instead of a short sample.",
+            "You generate concise, high-quality study flashcards using active-recall principles. Front = a focused question. Back = a precise, complete answer FOLLOWED BY a short memory aid on a new line prefixed with '🧠 Mnemonic: '. The mnemonic should be a simple, vivid, easy-to-remember device — an acronym, rhyme, vivid image, story, or association. Make mnemonics genuinely helpful (not forced); if a fact is already trivially memorable (e.g. a single common word), you may skip the mnemonic line. Avoid trivia; prioritise key concepts, definitions, dates, names, and relationships. Cover the full source, not just the opening sections. When the document is substantial, return a comprehensive deck instead of a short sample.",
         },
         {
           role: "user",
