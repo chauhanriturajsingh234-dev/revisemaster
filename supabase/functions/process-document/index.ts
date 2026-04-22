@@ -81,7 +81,15 @@ async function extractText(bytes: Uint8Array, mime: string, name: string): Promi
   throw new Error("Unsupported file type");
 }
 
-async function requestChunkCards(chunk: string, filename: string, maxItems: number): Promise<GeneratedDeck> {
+async function requestChunkCards(input: {
+  chunk: string;
+  filename: string;
+  maxItems: number;
+  minItems: number;
+  chunkIndex: number;
+  totalChunks: number;
+  retryHint?: string;
+}): Promise<GeneratedDeck> {
   const apiKey = Deno.env.get("LOVABLE_API_KEY");
   if (!apiKey) throw new Error("LOVABLE_API_KEY not configured");
 
@@ -94,11 +102,11 @@ async function requestChunkCards(chunk: string, filename: string, maxItems: numb
         {
           role: "system",
           content:
-            "You generate concise, high-quality study flashcards using active-recall principles. Front = a focused question. Back = a precise, complete answer FOLLOWED BY a fun memory aid on a new line prefixed with '🧠 Mnemonic: '. \n\nMNEMONIC STYLE — IMPORTANT: Write mnemonics in playful Hinglish (a natural blend of Hindi + English, written in Roman/English script — e.g. 'Yaad rakho: Mango = Aam, aur aam aadmi sabko pasand!'). Use Bollywood references, desi pop-culture, cricket, chai/samosa analogies, funny rhymes, tapori-style wordplay, or catchy filmi dialogues when they fit. Keep them short, vivid, and genuinely memorable — not cringe or forced. Hindi words should be in Roman script (no Devanagari) so everyone can read them. If a fact is trivially memorable, skip the mnemonic line. \n\nAvoid trivia; prioritise key concepts, definitions, dates, names, places, processes, formulas, schemes, and relationships. Extract broadly from the entire supplied chunk, including details from later sections. Produce thorough coverage, not a short sample.",
+            "You generate concise, high-quality study flashcards using active-recall principles. Front = a focused question. Back = a precise, complete answer FOLLOWED BY a fun memory aid on a new line prefixed with '🧠 Mnemonic: '. \n\nMNEMONIC STYLE — IMPORTANT: Write mnemonics in playful Hinglish (a natural blend of Hindi + English, written in Roman/English script — e.g. 'Yaad rakho: Mango = Aam, aur aam aadmi sabko pasand!'). Use Bollywood references, desi pop-culture, cricket, chai/samosa analogies, funny rhymes, tapori-style wordplay, or catchy filmi dialogues when they fit. Keep them short, vivid, and genuinely memorable — not cringe or forced. Hindi words should be in Roman script (no Devanagari) so everyone can read them. If a fact is trivially memorable, skip the mnemonic line. \n\nCoverage rules: prioritise key concepts, definitions, dates, names, places, processes, formulas, schemes, tables, lists, examples, comparisons, classifications, and relationships. Sweep the entire supplied chunk from top to bottom, including later sections and dense list/table content. Do not stop early after the obvious headings. Prefer many specific cards over a short summary sample.",
         },
         {
           role: "user",
-          content: `Source: ${filename}\n\nThis is one chunk from a longer document. Generate up to ${maxItems} high-quality flashcards from this chunk alone, covering all important facts, definitions, dates, names, places, formulas, schemes, and concepts present here. Avoid duplicates, filler, and vague cards. Also propose a short deck name (3-6 words) and one-sentence description that fit the overall subject.\n\n---\n${chunk}`,
+          content: `Source: ${input.filename}\nChunk ${input.chunkIndex + 1} of ${input.totalChunks}\n\nThis is one chunk from a longer document. Generate between ${input.minItems} and ${input.maxItems} high-quality flashcards from this chunk alone, covering all important facts, definitions, dates, names, places, formulas, schemes, tables, classifications, examples, and concepts present here. Avoid duplicates, filler, and vague cards. Also propose a short deck name (3-6 words) and one-sentence description that fit the overall subject.${input.retryHint ? `\n\nRetry instruction: ${input.retryHint}` : ""}\n\n---\n${input.chunk}`,
         },
       ],
       max_tokens: AI_MAX_OUTPUT_TOKENS,
@@ -122,7 +130,7 @@ async function requestChunkCards(chunk: string, filename: string, maxItems: numb
                     additionalProperties: false,
                   },
                   minItems: 8,
-                  maxItems: 90,
+                  maxItems: 120,
                 },
               },
               required: ["name", "description", "cards"],
@@ -189,7 +197,7 @@ Deno.serve(async (req) => {
     const generated = await generateDeckFromDocumentText({
       text,
       filename: doc.filename,
-      requestChunkCards: ({ chunk, filename, maxItems }) => requestChunkCards(chunk, filename, maxItems),
+      requestChunkCards: (chunkInput) => requestChunkCards(chunkInput),
     });
 
     // Create deck
