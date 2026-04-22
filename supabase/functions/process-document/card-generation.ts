@@ -64,7 +64,7 @@ function splitTextIntoChunks(text: string) {
 }
 
 function estimateDeckSize(textLength: number) {
-  return clamp(Math.ceil(textLength / 900), MIN_DECK_CARDS, MAX_DECK_CARDS);
+  return clamp(Math.ceil(textLength / 700), MIN_DECK_CARDS, MAX_DECK_CARDS);
 }
 
 function distributeTargets(totalCards: number, chunks: string[]) {
