@@ -15,11 +15,11 @@ type RequestChunkCards = (input: {
 }) => Promise<GeneratedDeck>;
 
 const MAX_SOURCE_TEXT = 600_000;
-const MIN_DECK_CARDS = 60;
-const MAX_DECK_CARDS = 400;
-const CHUNK_TARGET_CHARS = 45_000;
-const CHUNK_OVERLAP_CHARS = 3_000;
-const MAX_CHUNK_CARDS = 80;
+const MIN_DECK_CARDS = 40;
+const MAX_DECK_CARDS = 150;
+const CHUNK_TARGET_CHARS = 35_000;
+const CHUNK_OVERLAP_CHARS = 2_500;
+const MAX_CHUNK_CARDS = 60;
 
 function clamp(value: number, min: number, max: number) {
   return Math.min(max, Math.max(min, value));
@@ -64,7 +64,7 @@ function splitTextIntoChunks(text: string) {
 }
 
 function estimateDeckSize(textLength: number) {
-  return clamp(Math.ceil(textLength / 900), MIN_DECK_CARDS, MAX_DECK_CARDS);
+  return clamp(Math.ceil(textLength / 700), MIN_DECK_CARDS, MAX_DECK_CARDS);
 }
 
 function distributeTargets(totalCards: number, chunks: string[]) {
