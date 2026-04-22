@@ -72,7 +72,8 @@ function distributeTargets(totalCards: number, chunks: string[]) {
   if (chunks.length === 1) return [totalCards];
 
   const totalLength = chunks.reduce((sum, chunk) => sum + chunk.length, 0) || 1;
-  const minimumPerChunk = clamp(Math.floor(totalCards / chunks.length), 6, 16);
+  const averagePerChunk = Math.max(1, Math.floor(totalCards / chunks.length));
+  const minimumPerChunk = clamp(averagePerChunk, 1, Math.min(16, totalCards));
   const targets = chunks.map(() => minimumPerChunk);
   let remaining = Math.max(totalCards - minimumPerChunk * chunks.length, 0);
 
