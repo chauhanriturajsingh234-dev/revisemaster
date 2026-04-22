@@ -83,6 +83,16 @@ function StudyPage() {
         if (!flipped) setFlipped(true);
         return;
       }
+      if (e.key === "ArrowLeft") {
+        e.preventDefault();
+        goPrevious();
+        return;
+      }
+      if (e.key === "ArrowRight" || e.key === "s" || e.key === "S") {
+        e.preventDefault();
+        skip();
+        return;
+      }
       if (!flipped) return;
       const map: Record<string, Grade> = { "1": "again", "2": "hard", "3": "good", "4": "easy" };
       if (map[e.key]) {
@@ -92,7 +102,7 @@ function StudyPage() {
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [flipped, grade]);
+  }, [flipped, grade, goPrevious, skip]);
 
   const progress = useMemo(() => {
     const total = reviewed + remaining;
@@ -234,6 +244,34 @@ function StudyPage() {
                 </button>
               ))}
             </motion.div>
+
+            <div className="mt-4 flex items-center justify-between gap-3">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={goPrevious}
+                disabled={history.length === 0}
+                className="gap-1.5"
+              >
+                <ChevronLeft className="h-4 w-4" /> Previous
+                <kbd className="ml-1 text-[10px] opacity-60 px-1 py-0.5 rounded bg-muted">←</kbd>
+              </Button>
+              <span className="text-xs text-muted-foreground hidden sm:block">
+                {flipped ? "Grade your recall, or use Previous / Skip" : "Press Space to reveal"}
+              </span>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={skip}
+                disabled={queue.length < 2}
+                className="gap-1.5"
+              >
+                Skip <SkipForward className="h-4 w-4" />
+                <kbd className="ml-1 text-[10px] opacity-60 px-1 py-0.5 rounded bg-muted">→</kbd>
+              </Button>
+            </div>
           </>
         )}
       </main>
