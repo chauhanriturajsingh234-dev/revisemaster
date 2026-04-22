@@ -78,16 +78,16 @@ function Index() {
       .finally(() => setLoadingDecks(false));
   }, [user]);
 
-  if (!loading && !user) return <Navigate to="/auth" />;
-
-  const totalCards = decks.reduce((s, d) => s + d.cardCount, 0);
-  const totalDue = decks.reduce((s, d) => s + d.dueCount, 0);
-
   const visibleDecks = useMemo(() => {
     if (filter === "all") return decks;
     if (filter === "ungrouped") return decks.filter((d) => !d.group_id);
     return decks.filter((d) => d.group_id === filter);
   }, [decks, filter]);
+
+  if (!loading && !user) return <Navigate to="/auth" />;
+
+  const totalCards = decks.reduce((s, d) => s + d.cardCount, 0);
+  const totalDue = decks.reduce((s, d) => s + d.dueCount, 0);
 
   const ungroupedCount = decks.filter((d) => !d.group_id).length;
   const countForGroup = (gid: string) => decks.filter((d) => d.group_id === gid).length;
