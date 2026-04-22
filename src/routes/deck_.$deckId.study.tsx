@@ -5,7 +5,7 @@ import { SiteHeader } from "@/components/SiteHeader";
 import { Button } from "@/components/ui/button";
 import { getDeck, listCards, gradeCard, type Card, type Deck, type Grade } from "@/lib/storage";
 import { useAuth } from "@/hooks/useAuth";
-import { ArrowLeft, Check } from "lucide-react";
+import { ArrowLeft, Check, ChevronLeft, SkipForward } from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/deck_/$deckId/study")({
@@ -25,6 +25,7 @@ function StudyPage() {
   const navigate = useNavigate();
   const [deck, setDeck] = useState<Deck | null>(null);
   const [queue, setQueue] = useState<Card[]>([]);
+  const [history, setHistory] = useState<Card[]>([]);
   const [flipped, setFlipped] = useState(false);
   const [reviewed, setReviewed] = useState(0);
 
@@ -48,6 +49,7 @@ function StudyPage() {
       if (!current) return;
       try {
         await gradeCard(current, g);
+        setHistory((h) => [...h, current]);
         setQueue((q) => q.slice(1));
         setReviewed((n) => n + 1);
         setFlipped(false);
@@ -58,11 +60,37 @@ function StudyPage() {
     [current],
   );
 
+  const skip = useCallback(() => {
+    setQueue((q) => (q.length < 2 ? q : [...q.slice(1), q[0]]));
+    setFlipped(false);
+  }, []);
+
+  const goPrevious = useCallback(() => {
+    setHistory((h) => {
+      if (h.length === 0) return h;
+      const prev = h[h.length - 1];
+      setQueue((q) => [prev, ...q]);
+      setReviewed((n) => Math.max(0, n - 1));
+      setFlipped(false);
+      return h.slice(0, -1);
+    });
+  }, []);
+
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === " " || e.key === "Enter") {
         e.preventDefault();
         if (!flipped) setFlipped(true);
+        return;
+      }
+      if (e.key === "ArrowLeft") {
+        e.preventDefault();
+        goPrevious();
+        return;
+      }
+      if (e.key === "ArrowRight" || e.key === "s" || e.key === "S") {
+        e.preventDefault();
+        skip();
         return;
       }
       if (!flipped) return;
@@ -74,7 +102,7 @@ function StudyPage() {
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [flipped, grade]);
+  }, [flipped, grade, goPrevious, skip]);
 
   const progress = useMemo(() => {
     const total = reviewed + remaining;
@@ -216,6 +244,34 @@ function StudyPage() {
                 </button>
               ))}
             </motion.div>
+
+            <div className="mt-4 flex items-center justify-between gap-3">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={goPrevious}
+                disabled={history.length === 0}
+                className="gap-1.5"
+              >
+                <ChevronLeft className="h-4 w-4" /> Previous
+                <kbd className="ml-1 text-[10px] opacity-60 px-1 py-0.5 rounded bg-muted">←</kbd>
+              </Button>
+              <span className="text-xs text-muted-foreground hidden sm:block">
+                {flipped ? "Grade your recall, or use Previous / Skip" : "Press Space to reveal"}
+              </span>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={skip}
+                disabled={queue.length < 2}
+                className="gap-1.5"
+              >
+                Skip <SkipForward className="h-4 w-4" />
+                <kbd className="ml-1 text-[10px] opacity-60 px-1 py-0.5 rounded bg-muted">→</kbd>
+              </Button>
+            </div>
           </>
         )}
       </main>
