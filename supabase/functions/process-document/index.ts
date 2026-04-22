@@ -25,7 +25,7 @@ function bytesToBase64(bytes: Uint8Array): string {
   return btoa(binary);
 }
 
-async function ocrPdfWithVision(bytes: Uint8Array): Promise<string> {
+async function ocrPdfWithVision(bytes: Uint8Array, hint?: string): Promise<string> {
   const apiKey = Deno.env.get("LOVABLE_API_KEY");
   if (!apiKey) throw new Error("LOVABLE_API_KEY not configured");
   const b64 = bytesToBase64(bytes);
@@ -38,7 +38,12 @@ async function ocrPdfWithVision(bytes: Uint8Array): Promise<string> {
         {
           role: "user",
           content: [
-            { type: "text", text: "Transcribe ALL readable text, formulas, and notes from this PDF. Preserve structure (headings, lists, equations). Output plain text only." },
+            {
+              type: "text",
+              text:
+                (hint ? `${hint}\n\n` : "") +
+                "Transcribe ALL readable text, formulas, equations, tables, captions, headers, footers, and handwritten notes from this PDF. Preserve the original reading order and structure (headings, bullet lists, numbered lists, table rows). For tables, output rows as pipe-separated values. Do NOT summarize, paraphrase, or skip any content — output the full verbatim text only, in plain text.",
+            },
             { type: "image_url", image_url: { url: `data:application/pdf;base64,${b64}` } },
           ],
         },
@@ -62,22 +67,46 @@ async function extractText(bytes: Uint8Array, mime: string, name: string): Promi
     return result.value || "";
   }
   if (mime === "application/pdf" || lower.endsWith(".pdf")) {
-    let nativeText = "";
+    // Try native per-page extraction first so we can detect sparse/scanned pages.
+    let pageTexts: string[] = [];
+    let totalPages = 0;
     try {
       const pdf = await getDocumentProxy(bytes);
-      const { text } = await extractPdfText(pdf, { mergePages: true });
-      nativeText = (Array.isArray(text) ? text.join("\n\n") : text) ?? "";
+      totalPages = pdf.numPages ?? 0;
+      const { text } = await extractPdfText(pdf, { mergePages: false });
+      pageTexts = Array.isArray(text) ? text : (text ? [text] : []);
     } catch (e) {
       console.warn("Native PDF extract failed:", e instanceof Error ? e.message : e);
     }
-    const cleaned = nativeText.replace(/\s+/g, " ").trim();
-    if (cleaned.length >= MIN_TEXT_QUALITY) {
-      return nativeText.slice(0, MAX_TEXT);
+
+    const cleanedJoined = pageTexts.join("\n\n").replace(/\s+/g, " ").trim();
+    const sparsePageCount = pageTexts.filter((p) => (p ?? "").replace(/\s+/g, " ").trim().length < MIN_PAGE_CHARS).length;
+    const sparseRatio = pageTexts.length ? sparsePageCount / pageTexts.length : 1;
+
+    // Whole document is too thin OR most pages are sparse → full vision OCR.
+    if (cleanedJoined.length < MIN_TEXT_QUALITY || sparseRatio > 0.6) {
+      console.log(`Native extraction weak (${cleanedJoined.length} chars, ${sparsePageCount}/${pageTexts.length} sparse pages). Running full vision OCR.`);
+      const ocr = await ocrPdfWithVision(bytes, `This PDF has ${totalPages || "multiple"} pages. Process every page.`);
+      if (ocr.trim().length < 50) throw new Error("Could not extract readable text from PDF.");
+      return ocr;
     }
-    console.log(`Native extraction weak (${cleaned.length} chars). Falling back to vision OCR.`);
-    const ocr = await ocrPdfWithVision(bytes);
-    if (ocr.trim().length < 50) throw new Error("Could not extract readable text from PDF.");
-    return ocr;
+
+    // Mixed PDF: keep native pages, OCR only the sparse ones (whole doc, then merge as supplement).
+    if (sparsePageCount > 0) {
+      console.log(`Mixed PDF: ${sparsePageCount}/${pageTexts.length} pages look sparse. Augmenting with vision OCR.`);
+      try {
+        const ocrSupplement = await ocrPdfWithVision(
+          bytes,
+          `Some pages of this PDF are scanned images or have very little embedded text. Pay extra attention to those pages and transcribe their content fully.`,
+        );
+        const merged = `${pageTexts.join("\n\n")}\n\n--- SUPPLEMENTAL OCR ---\n\n${ocrSupplement}`;
+        return merged.slice(0, MAX_TEXT);
+      } catch (e) {
+        console.warn("OCR supplement failed, falling back to native text:", e instanceof Error ? e.message : e);
+      }
+    }
+
+    return pageTexts.join("\n\n").slice(0, MAX_TEXT);
   }
   throw new Error("Unsupported file type");
 }
