@@ -1,16 +1,35 @@
 {
-  "name": "ReviseMaster",
+  "id": "/",
+  "name": "ReviseMaster — Active Recall Flashcards",
   "short_name": "ReviseMaster",
-  "description": "Active recall flashcards with spaced repetition.",
+  "description": "Master any subject with spaced repetition flashcards and active recall.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
+  "display_override": ["standalone", "minimal-ui"],
   "orientation": "portrait",
+  "lang": "en",
+  "dir": "ltr",
   "background_color": "#0f1115",
   "theme_color": "#0f1115",
+  "categories": ["education", "productivity", "books"],
   "icons": [
     { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
     { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
     { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ],
+  "shortcuts": [
+    {
+      "name": "All decks",
+      "short_name": "Decks",
+      "url": "/",
+      "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Upload notes",
+      "short_name": "Upload",
+      "url": "/documents",
+      "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }]
+    }
   ]
 }

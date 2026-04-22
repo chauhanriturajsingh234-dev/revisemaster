@@ -17,9 +17,18 @@ export type Deck = {
   description: string;
   created_at: string;
   source_document_id: string | null;
+  group_id: string | null;
 };
 
 export type DeckWithStats = Deck & { cardCount: number; dueCount: number };
+
+export type DeckGroup = {
+  id: string;
+  name: string;
+  color: string;
+  sort_order: number;
+  created_at: string;
+};
 
 export type Grade = "again" | "hard" | "good" | "easy";
 
@@ -27,7 +36,7 @@ export type Grade = "again" | "hard" | "good" | "easy";
 export async function listDecks(): Promise<DeckWithStats[]> {
   const { data: decks, error } = await supabase
     .from("decks")
-    .select("id, name, description, created_at, source_document_id")
+    .select("id, name, description, created_at, source_document_id, group_id")
     .order("created_at", { ascending: false });
   if (error) throw error;
   if (!decks?.length) return [];
@@ -51,20 +60,20 @@ export async function listDecks(): Promise<DeckWithStats[]> {
 export async function getDeck(deckId: string): Promise<Deck | null> {
   const { data, error } = await supabase
     .from("decks")
-    .select("id, name, description, created_at, source_document_id")
+    .select("id, name, description, created_at, source_document_id, group_id")
     .eq("id", deckId)
     .maybeSingle();
   if (error) throw error;
   return data;
 }
 
-export async function createDeck(input: { name: string; description?: string }): Promise<Deck> {
+export async function createDeck(input: { name: string; description?: string; group_id?: string | null }): Promise<Deck> {
   const { data: u } = await supabase.auth.getUser();
   if (!u.user) throw new Error("Not authenticated");
   const { data, error } = await supabase
     .from("decks")
-    .insert({ user_id: u.user.id, name: input.name, description: input.description ?? "" })
-    .select("id, name, description, created_at, source_document_id")
+    .insert({ user_id: u.user.id, name: input.name, description: input.description ?? "", group_id: input.group_id ?? null })
+    .select("id, name, description, created_at, source_document_id, group_id")
     .single();
   if (error) throw error;
   return data;
@@ -72,6 +81,44 @@ export async function createDeck(input: { name: string; description?: string }):
 
 export async function deleteDeck(deckId: string) {
   const { error } = await supabase.from("decks").delete().eq("id", deckId);
+  if (error) throw error;
+}
+
+export async function moveDeckToGroup(deckId: string, groupId: string | null) {
+  const { error } = await supabase.from("decks").update({ group_id: groupId }).eq("id", deckId);
+  if (error) throw error;
+}
+
+// ---------- Groups ----------
+export async function listGroups(): Promise<DeckGroup[]> {
+  const { data, error } = await supabase
+    .from("deck_groups")
+    .select("id, name, color, sort_order, created_at")
+    .order("sort_order", { ascending: true })
+    .order("created_at", { ascending: true });
+  if (error) throw error;
+  return data ?? [];
+}
+
+export async function createGroup(input: { name: string; color?: string }): Promise<DeckGroup> {
+  const { data: u } = await supabase.auth.getUser();
+  if (!u.user) throw new Error("Not authenticated");
+  const { data, error } = await supabase
+    .from("deck_groups")
+    .insert({ user_id: u.user.id, name: input.name, color: input.color ?? "primary" })
+    .select("id, name, color, sort_order, created_at")
+    .single();
+  if (error) throw error;
+  return data;
+}
+
+export async function renameGroup(groupId: string, name: string) {
+  const { error } = await supabase.from("deck_groups").update({ name }).eq("id", groupId);
+  if (error) throw error;
+}
+
+export async function deleteGroup(groupId: string) {
+  const { error } = await supabase.from("deck_groups").delete().eq("id", groupId);
   if (error) throw error;
 }
 
