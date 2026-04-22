@@ -64,10 +64,41 @@ export type Database = {
           },
         ]
       }
+      deck_groups: {
+        Row: {
+          color: string
+          created_at: string
+          id: string
+          name: string
+          sort_order: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          color?: string
+          created_at?: string
+          id?: string
+          name: string
+          sort_order?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          color?: string
+          created_at?: string
+          id?: string
+          name?: string
+          sort_order?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       decks: {
         Row: {
           created_at: string
           description: string
+          group_id: string | null
           id: string
           name: string
           source_document_id: string | null
@@ -77,6 +108,7 @@ export type Database = {
         Insert: {
           created_at?: string
           description?: string
+          group_id?: string | null
           id?: string
           name: string
           source_document_id?: string | null
@@ -86,13 +118,22 @@ export type Database = {
         Update: {
           created_at?: string
           description?: string
+          group_id?: string | null
           id?: string
           name?: string
           source_document_id?: string | null
           updated_at?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "decks_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: false
+            referencedRelation: "deck_groups"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       documents: {
         Row: {
