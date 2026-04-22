@@ -8,13 +8,18 @@ type RequestChunkCards = (input: {
   chunk: string;
   filename: string;
   maxItems: number;
+  minItems: number;
+  chunkIndex: number;
+  totalChunks: number;
+  retryHint?: string;
 }) => Promise<GeneratedDeck>;
 
 const MAX_SOURCE_TEXT = 600_000;
-const MIN_DECK_CARDS = 40;
-const MAX_DECK_CARDS = 200;
-const CHUNK_TARGET_CHARS = 70_000;
-const CHUNK_OVERLAP_CHARS = 4_000;
+const MIN_DECK_CARDS = 60;
+const MAX_DECK_CARDS = 400;
+const CHUNK_TARGET_CHARS = 45_000;
+const CHUNK_OVERLAP_CHARS = 3_000;
+const MAX_CHUNK_CARDS = 80;
 
 function clamp(value: number, min: number, max: number) {
   return Math.min(max, Math.max(min, value));
@@ -44,7 +49,7 @@ function splitTextIntoChunks(text: string) {
       const slice = normalized.slice(start, windowEnd);
       const breakpoints = [slice.lastIndexOf("\n\n"), slice.lastIndexOf(". "), slice.lastIndexOf("\n")];
       const bestBreakpoint = Math.max(...breakpoints);
-      if (bestBreakpoint > CHUNK_TARGET_CHARS * 0.55) {
+      if (bestBreakpoint > CHUNK_TARGET_CHARS * 0.5) {
         end = start + bestBreakpoint + (slice[bestBreakpoint] === "." ? 1 : 0);
       }
     }
@@ -59,23 +64,39 @@ function splitTextIntoChunks(text: string) {
 }
 
 function estimateDeckSize(textLength: number) {
-  return clamp(Math.ceil(textLength / 1_500), MIN_DECK_CARDS, MAX_DECK_CARDS);
+  return clamp(Math.ceil(textLength / 900), MIN_DECK_CARDS, MAX_DECK_CARDS);
 }
 
 function distributeTargets(totalCards: number, chunks: string[]) {
+  if (chunks.length === 0) return [];
+  if (chunks.length === 1) return [totalCards];
+
   const totalLength = chunks.reduce((sum, chunk) => sum + chunk.length, 0) || 1;
+  const minimumPerChunk = clamp(Math.floor(totalCards / chunks.length), 6, 16);
+  const targets = chunks.map(() => minimumPerChunk);
+  let remaining = Math.max(totalCards - minimumPerChunk * chunks.length, 0);
 
-  return chunks.map((chunk, index) => {
-    const proportional = Math.round((chunk.length / totalLength) * totalCards);
-    const floor = chunks.length === 1 ? totalCards : 12;
-    const remainingChunks = chunks.length - index - 1;
-    const assignedSoFar = chunks
-      .slice(0, index)
-      .reduce((sum, _, i) => sum + Math.max(12, Math.round((chunks[i].length / totalLength) * totalCards)), 0);
-    const remainingBudget = Math.max(totalCards - assignedSoFar, floor * remainingChunks);
+  const weightedExtras = chunks.map((chunk) => (chunk.length / totalLength) * remaining);
+  for (let index = 0; index < weightedExtras.length; index += 1) {
+    const whole = Math.min(MAX_CHUNK_CARDS - targets[index], Math.floor(weightedExtras[index]));
+    targets[index] += whole;
+    remaining -= whole;
+  }
 
-    return clamp(proportional || floor, floor, Math.min(90, remainingBudget));
-  });
+  if (remaining > 0) {
+    const order = weightedExtras
+      .map((value, index) => ({ index, fraction: value - Math.floor(value) }))
+      .sort((a, b) => b.fraction - a.fraction);
+
+    for (const item of order) {
+      if (remaining <= 0) break;
+      if (targets[item.index] >= MAX_CHUNK_CARDS) continue;
+      targets[item.index] += 1;
+      remaining -= 1;
+    }
+  }
+
+  return targets;
 }
 
 function normalizeCardKey(card: { front: string; back: string }) {
@@ -112,6 +133,21 @@ function dedupeCards(cards: { front: string; back: string }[]) {
   return unique;
 }
 
+function minimumAcceptableCards(target: number) {
+  return clamp(Math.ceil(target * 0.65), 8, target);
+}
+
+function mergeDeckResults(primary: GeneratedDeck, secondary: GeneratedDeck): GeneratedDeck {
+  const cards = dedupeCards([...primary.cards, ...secondary.cards]);
+  const preferred = secondary.cards.length > primary.cards.length ? secondary : primary;
+
+  return {
+    name: primary.name || secondary.name || preferred.name,
+    description: primary.description || secondary.description || preferred.description,
+    cards,
+  };
+}
+
 export async function generateDeckFromDocumentText(input: {
   text: string;
   filename: string;
@@ -123,12 +159,38 @@ export async function generateDeckFromDocumentText(input: {
 
   const results: GeneratedDeck[] = [];
   for (let index = 0; index < chunks.length; index += 1) {
-    const result = await input.requestChunkCards({
-      chunk: chunks[index],
-      filename: input.filename,
-      maxItems: chunkTargets[index],
-    });
-    results.push(sanitizeDeck(result));
+    const maxItems = chunkTargets[index];
+    const minItems = minimumAcceptableCards(maxItems);
+
+    const firstPass = sanitizeDeck(
+      await input.requestChunkCards({
+        chunk: chunks[index],
+        filename: input.filename,
+        maxItems,
+        minItems,
+        chunkIndex: index,
+        totalChunks: chunks.length,
+      }),
+    );
+
+    if (firstPass.cards.length >= minItems || chunks[index].length < 1_200) {
+      results.push(firstPass);
+      continue;
+    }
+
+    const retryPass = sanitizeDeck(
+      await input.requestChunkCards({
+        chunk: chunks[index],
+        filename: input.filename,
+        maxItems,
+        minItems,
+        chunkIndex: index,
+        totalChunks: chunks.length,
+        retryHint: `Previous pass returned only ${firstPass.cards.length} cards out of the requested ${maxItems}. Add overlooked facts, formulas, tables, examples, section-end details, and list items from this chunk.`,
+      }),
+    );
+
+    results.push(mergeDeckResults(firstPass, retryPass));
   }
 
   const primary = results.find((result) => result.cards.length > 0) ?? {
