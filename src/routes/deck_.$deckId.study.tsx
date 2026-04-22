@@ -5,7 +5,7 @@ import { SiteHeader } from "@/components/SiteHeader";
 import { Button } from "@/components/ui/button";
 import { getDeck, listCards, gradeCard, type Card, type Deck, type Grade } from "@/lib/storage";
 import { useAuth } from "@/hooks/useAuth";
-import { ArrowLeft, Check } from "lucide-react";
+import { ArrowLeft, Check, ChevronLeft, SkipForward } from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/deck_/$deckId/study")({
@@ -25,6 +25,7 @@ function StudyPage() {
   const navigate = useNavigate();
   const [deck, setDeck] = useState<Deck | null>(null);
   const [queue, setQueue] = useState<Card[]>([]);
+  const [history, setHistory] = useState<Card[]>([]);
   const [flipped, setFlipped] = useState(false);
   const [reviewed, setReviewed] = useState(0);
 
@@ -48,6 +49,7 @@ function StudyPage() {
       if (!current) return;
       try {
         await gradeCard(current, g);
+        setHistory((h) => [...h, current]);
         setQueue((q) => q.slice(1));
         setReviewed((n) => n + 1);
         setFlipped(false);
@@ -57,6 +59,22 @@ function StudyPage() {
     },
     [current],
   );
+
+  const skip = useCallback(() => {
+    setQueue((q) => (q.length < 2 ? q : [...q.slice(1), q[0]]));
+    setFlipped(false);
+  }, []);
+
+  const goPrevious = useCallback(() => {
+    setHistory((h) => {
+      if (h.length === 0) return h;
+      const prev = h[h.length - 1];
+      setQueue((q) => [prev, ...q]);
+      setReviewed((n) => Math.max(0, n - 1));
+      setFlipped(false);
+      return h.slice(0, -1);
+    });
+  }, []);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
