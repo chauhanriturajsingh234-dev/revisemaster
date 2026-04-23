@@ -113,15 +113,16 @@ function DocumentsPage() {
       toast.success("Uploaded — generating flashcards…");
       await refresh();
 
-      const { error: fnErr } = await supabase.functions.invoke("process-document", {
+      const { data: fnData, error: fnErr } = await supabase.functions.invoke("process-document", {
         body: { documentId: doc.id },
       });
-      if (fnErr) {
-        const message = fnErr.message.includes("AI credits exhausted")
+      if (fnErr || fnData?.ok === false) {
+        const rawMessage = fnErr?.message ?? fnData?.error ?? "Processing failed to start";
+        const message = rawMessage.includes("AI credits exhausted")
           ? "AI credits are exhausted. Add credits in workspace settings to generate flashcards."
-          : fnErr.message.includes("AI rate limit")
+          : rawMessage.includes("AI rate limit")
             ? "AI is temporarily rate limited. Please wait a moment and try again."
-            : `Processing failed to start: ${fnErr.message}`;
+            : `Processing failed to start: ${rawMessage}`;
         toast.error(message);
       }
     } catch (e) {
@@ -161,13 +162,14 @@ function DocumentsPage() {
   const handleRetry = async (doc: DocRow) => {
     try {
       await supabase.from("documents").update({ status: "uploaded", error: null }).eq("id", doc.id);
-      const { error } = await supabase.functions.invoke("process-document", { body: { documentId: doc.id } });
-      if (error) {
-        const message = error.message.includes("AI credits exhausted")
+      const { data, error } = await supabase.functions.invoke("process-document", { body: { documentId: doc.id } });
+      if (error || data?.ok === false) {
+        const rawMessage = error?.message ?? data?.error ?? "Retry failed";
+        const message = rawMessage.includes("AI credits exhausted")
           ? "AI credits are exhausted. Add credits in workspace settings to generate flashcards."
-          : error.message.includes("AI rate limit")
+          : rawMessage.includes("AI rate limit")
             ? "AI is temporarily rate limited. Please wait a moment and try again."
-            : error.message;
+            : rawMessage;
         toast.error(message);
         return;
       }

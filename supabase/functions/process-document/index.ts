@@ -63,7 +63,8 @@ async function extractText(bytes: Uint8Array, mime: string, name: string): Promi
     return new TextDecoder().decode(bytes);
   }
   if (mime === "application/vnd.openxmlformats-officedocument.wordprocessingml.document" || lower.endsWith(".docx")) {
-    const result = await mammoth.extractRawText({ arrayBuffer: bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) });
+    const docxBuffer = new Uint8Array(bytes).slice().buffer as ArrayBuffer;
+    const result = await mammoth.extractRawText({ arrayBuffer: docxBuffer });
     return result.value || "";
   }
   if (mime === "application/pdf" || lower.endsWith(".pdf")) {
@@ -314,18 +315,19 @@ Deno.serve(async (req) => {
     });
   } catch (e) {
     const msg = e instanceof Error ? e.message : "Unknown error";
-    const status = msg.includes("AI credits exhausted")
-      ? 402
+    const code = msg.includes("AI credits exhausted")
+      ? "AI_CREDITS_EXHAUSTED"
       : msg.includes("AI rate limit reached")
-        ? 429
-        : 500;
+        ? "AI_RATE_LIMITED"
+        : "PROCESSING_FAILED";
+    const fallback = code === "PROCESSING_FAILED";
 
     console.error("process-document error:", msg);
     if (documentId) {
       await admin.from("documents").update({ status: "failed", error: msg }).eq("id", documentId);
     }
-    return new Response(JSON.stringify({ error: msg, code: status === 402 ? "AI_CREDITS_EXHAUSTED" : status === 429 ? "AI_RATE_LIMITED" : "PROCESSING_FAILED" }), {
-      status,
+    return new Response(JSON.stringify({ ok: false, error: msg, code, fallback }), {
+      status: 200,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
