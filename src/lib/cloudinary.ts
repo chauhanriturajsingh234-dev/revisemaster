@@ -2,7 +2,7 @@
 // Cloud + preset are public values (safe in client code).
 
 export const CLOUDINARY_CLOUD_NAME = "dbqdcycdu";
-export const CLOUDINARY_UPLOAD_PRESET = "Testurself";
+export const CLOUDINARY_UPLOAD_PRESET = "upload_preset";
 
 export type CloudinaryUploadResult = {
   secure_url: string;
