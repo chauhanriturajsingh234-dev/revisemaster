@@ -314,16 +314,22 @@ Deno.serve(async (req) => {
     });
   } catch (e) {
     const msg = e instanceof Error ? e.message : "Unknown error";
-    const status = msg.includes("AI credits exhausted")
-      ? 402
+    const code = msg.includes("AI credits exhausted")
+      ? "AI_CREDITS_EXHAUSTED"
       : msg.includes("AI rate limit reached")
-        ? 429
-        : 500;
+        ? "AI_RATE_LIMITED"
+        : "PROCESSING_FAILED";
+    const fallback = code === "PROCESSING_FAILED";
 
     console.error("process-document error:", msg);
     if (documentId) {
       await admin.from("documents").update({ status: "failed", error: msg }).eq("id", documentId);
     }
+    return new Response(JSON.stringify({ ok: false, error: msg, code, fallback }), {
+      status: 200,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
     return new Response(JSON.stringify({ error: msg, code: status === 402 ? "AI_CREDITS_EXHAUSTED" : status === 429 ? "AI_RATE_LIMITED" : "PROCESSING_FAILED" }), {
       status,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
