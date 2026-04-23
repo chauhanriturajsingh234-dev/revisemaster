@@ -183,6 +183,32 @@ async function requestChunkCards(input: {
   return JSON.parse(call.function.arguments) as GeneratedDeck;
 }
 
+function getCloudinaryFetchCandidates(storagePath: string, mimeType: string, filename: string): string[] {
+  if (!/^https?:\/\//i.test(storagePath)) return [storagePath];
+
+  try {
+    const url = new URL(storagePath);
+    const isCloudinary = /(^|\.)res\.cloudinary\.com$/i.test(url.hostname);
+    if (!isCloudinary) return [storagePath];
+
+    const lowerName = filename.toLowerCase();
+    const isDocument =
+      mimeType === "application/pdf" ||
+      mimeType === "application/vnd.openxmlformats-officedocument.wordprocessingml.document" ||
+      mimeType === "text/plain" ||
+      /\.(pdf|docx|txt)$/i.test(lowerName);
+
+    if (!isDocument) return [storagePath];
+
+    const rawUrl = new URL(storagePath);
+    rawUrl.pathname = rawUrl.pathname.replace("/image/upload/", "/raw/upload/");
+
+    return Array.from(new Set([storagePath, rawUrl.toString()]));
+  } catch {
+    return [storagePath];
+  }
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
@@ -216,12 +242,31 @@ Deno.serve(async (req) => {
 
     await admin.from("documents").update({ status: "processing", error: null }).eq("id", documentId);
 
-    // Download file. storage_path is a Cloudinary URL (or legacy Supabase Storage path).
+    // Download file. storage_path may be a legacy Cloudinary /image/upload/ PDF URL,
+    // so we retry a normalized /raw/upload/ variant before failing.
     let bytes: Uint8Array;
     if (/^https?:\/\//i.test(doc.storage_path)) {
-      const resp = await fetch(doc.storage_path);
-      if (!resp.ok) throw new Error(`Failed to fetch file from URL: ${resp.status}`);
-      bytes = new Uint8Array(await resp.arrayBuffer());
+      const candidateUrls = getCloudinaryFetchCandidates(doc.storage_path, doc.mime_type, doc.filename);
+      let response: Response | null = null;
+      let resolvedUrl = doc.storage_path;
+      let lastStatus: number | null = null;
+
+      for (const candidateUrl of candidateUrls) {
+        const resp = await fetch(candidateUrl);
+        if (resp.ok) {
+          response = resp;
+          resolvedUrl = candidateUrl;
+          break;
+        }
+        lastStatus = resp.status;
+        console.warn(`Document fetch failed (${resp.status}) for ${candidateUrl}`);
+      }
+
+      if (!response) throw new Error(`Failed to fetch file from URL: ${lastStatus ?? "unknown"}`);
+      if (resolvedUrl !== doc.storage_path) {
+        await admin.from("documents").update({ storage_path: resolvedUrl }).eq("id", documentId);
+      }
+      bytes = new Uint8Array(await response.arrayBuffer());
     } else {
       const { data: file, error: dlErr } = await admin.storage.from("documents").download(doc.storage_path);
       if (dlErr || !file) throw new Error(dlErr?.message ?? "Download failed");
