@@ -210,6 +210,47 @@ function getCloudinaryFetchCandidates(storagePath: string, mimeType: string, fil
   }
 }
 
+// Build a signed Cloudinary delivery URL when the asset is private/authenticated.
+// Uses HMAC-SHA1 over `public_id=<id>&timestamp=<ts><api_secret>` per Cloudinary spec,
+// truncated to 8 hex chars (`s--<sig>--`) for the URL signature segment.
+async function signCloudinaryUrl(rawUrl: string): Promise<string | null> {
+  const apiKey = Deno.env.get("CLOUDINARY_API_KEY");
+  const apiSecret = Deno.env.get("CLOUDINARY_API_SECRET");
+  if (!apiKey || !apiSecret) return null;
+
+  try {
+    const url = new URL(rawUrl);
+    // Path looks like: /<cloud>/<resource_type>/<type>/[v123/]<public_id>
+    // e.g. /dbqdcycdu/raw/upload/v1776923827/revisemaster/userId/abc.pdf
+    const parts = url.pathname.split("/").filter(Boolean);
+    if (parts.length < 4) return null;
+    const [, resourceType, deliveryType, ...rest] = parts;
+    if (!resourceType || !deliveryType || rest.length === 0) return null;
+
+    // Drop optional version segment (v123...) — public_id excludes it.
+    const tail = rest[0].match(/^v\d+$/) ? rest.slice(1) : rest;
+    const publicId = tail.join("/");
+    if (!publicId) return null;
+
+    const timestamp = Math.floor(Date.now() / 1000);
+    const toSign = `public_id=${publicId}&timestamp=${timestamp}${apiSecret}`;
+    const sigBytes = await crypto.subtle.digest("SHA-1", new TextEncoder().encode(toSign));
+    const sigHex = Array.from(new Uint8Array(sigBytes))
+      .map((b) => b.toString(16).padStart(2, "0"))
+      .join("");
+    const signed = `s--${sigHex.slice(0, 8)}--`;
+
+    // Insert the signature segment right after the delivery type.
+    const newPath = `/${[parts[0], resourceType, deliveryType, signed, ...rest].join("/")}`;
+    url.pathname = newPath;
+    url.searchParams.set("api_key", apiKey);
+    url.searchParams.set("timestamp", String(timestamp));
+    return url.toString();
+  } catch {
+    return null;
+  }
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
