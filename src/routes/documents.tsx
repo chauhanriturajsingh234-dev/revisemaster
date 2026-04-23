@@ -117,7 +117,12 @@ function DocumentsPage() {
         body: { documentId: doc.id },
       });
       if (fnErr) {
-        toast.error(`Processing failed to start: ${fnErr.message}`);
+        const message = fnErr.message.includes("AI credits exhausted")
+          ? "AI credits are exhausted. Add credits in workspace settings to generate flashcards."
+          : fnErr.message.includes("AI rate limit")
+            ? "AI is temporarily rate limited. Please wait a moment and try again."
+            : `Processing failed to start: ${fnErr.message}`;
+        toast.error(message);
       }
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Upload failed");
@@ -154,9 +159,22 @@ function DocumentsPage() {
   };
 
   const handleRetry = async (doc: DocRow) => {
-    await supabase.from("documents").update({ status: "uploaded", error: null }).eq("id", doc.id);
-    await supabase.functions.invoke("process-document", { body: { documentId: doc.id } });
-    toast.success("Re-processing…");
+    try {
+      await supabase.from("documents").update({ status: "uploaded", error: null }).eq("id", doc.id);
+      const { error } = await supabase.functions.invoke("process-document", { body: { documentId: doc.id } });
+      if (error) {
+        const message = error.message.includes("AI credits exhausted")
+          ? "AI credits are exhausted. Add credits in workspace settings to generate flashcards."
+          : error.message.includes("AI rate limit")
+            ? "AI is temporarily rate limited. Please wait a moment and try again."
+            : error.message;
+        toast.error(message);
+        return;
+      }
+      toast.success("Re-processing…");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Retry failed");
+    }
   };
 
   return (
