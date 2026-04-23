@@ -7,6 +7,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { Upload, FileText, Download, Trash2, Sparkles, Loader2, AlertCircle, CheckCircle2 } from "lucide-react";
 import { toast } from "sonner";
+import { uploadToCloudinary } from "@/lib/cloudinary";
 
 type DocRow = {
   id: string;
@@ -86,20 +87,15 @@ function DocumentsPage() {
     }
     setUploading(true);
     try {
-      const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
-      const path = `${user.id}/${Date.now()}_${safeName}`;
-      const { error: upErr } = await supabase.storage.from("documents").upload(path, file, {
-        contentType: file.type || "application/octet-stream",
-        upsert: false,
-      });
-      if (upErr) throw upErr;
+      // Upload directly to Cloudinary (publicly accessible URL).
+      const result = await uploadToCloudinary(file, { folder: `revisemaster/${user.id}` });
 
       const { data: doc, error: insErr } = await supabase
         .from("documents")
         .insert({
           user_id: user.id,
           filename: file.name,
-          storage_path: path,
+          storage_path: result.secure_url, // Cloudinary URL
           mime_type: file.type || "application/octet-stream",
           size_bytes: file.size,
           status: "uploaded",
@@ -126,19 +122,14 @@ function DocumentsPage() {
     }
   };
 
-  const handleDownload = async (doc: DocRow) => {
-    const { data, error } = await supabase.storage.from("documents").createSignedUrl(doc.storage_path, 60);
-    if (error || !data) {
-      toast.error(error?.message ?? "Could not get download link");
-      return;
-    }
-    window.open(data.signedUrl, "_blank");
+  const handleDownload = (doc: DocRow) => {
+    // storage_path is now a Cloudinary URL
+    window.open(doc.storage_path, "_blank");
   };
 
   const handleDelete = async (doc: DocRow) => {
     if (!confirm(`Delete "${doc.filename}"? The associated deck will be kept.`)) return;
     try {
-      await supabase.storage.from("documents").remove([doc.storage_path]);
       const { error } = await supabase.from("documents").delete().eq("id", doc.id);
       if (error) throw error;
       setDocs(docs.filter((d) => d.id !== doc.id));
