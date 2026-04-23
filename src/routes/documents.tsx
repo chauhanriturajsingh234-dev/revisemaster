@@ -7,7 +7,6 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { Upload, FileText, Download, Trash2, Sparkles, Loader2, AlertCircle, CheckCircle2 } from "lucide-react";
 import { toast } from "sonner";
-import { uploadToCloudinary } from "@/lib/cloudinary";
 
 type DocRow = {
   id: string;
@@ -85,17 +84,24 @@ function DocumentsPage() {
       toast.error("Only PDF, DOCX, or TXT files are supported.");
       return;
     }
+
     setUploading(true);
     try {
-      // Upload directly to Cloudinary (publicly accessible URL).
-      const result = await uploadToCloudinary(file, { folder: `revisemaster/${user.id}` });
+      const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
+      const storagePath = `${user.id}/${Date.now()}_${safeName}`;
+
+      const { error: uploadErr } = await supabase.storage.from("documents").upload(storagePath, file, {
+        cacheControl: "3600",
+        upsert: false,
+      });
+      if (uploadErr) throw uploadErr;
 
       const { data: doc, error: insErr } = await supabase
         .from("documents")
         .insert({
           user_id: user.id,
           filename: file.name,
-          storage_path: result.secure_url, // Cloudinary URL
+          storage_path: storagePath,
           mime_type: file.type || "application/octet-stream",
           size_bytes: file.size,
           status: "uploaded",
@@ -107,7 +113,6 @@ function DocumentsPage() {
       toast.success("Uploaded — generating flashcards…");
       await refresh();
 
-      // Kick off processing
       const { error: fnErr } = await supabase.functions.invoke("process-document", {
         body: { documentId: doc.id },
       });
@@ -122,9 +127,19 @@ function DocumentsPage() {
     }
   };
 
-  const handleDownload = (doc: DocRow) => {
-    // storage_path is now a Cloudinary URL
-    window.open(doc.storage_path, "_blank");
+  const handleDownload = async (doc: DocRow) => {
+    try {
+      if (/^https?:\/\//i.test(doc.storage_path)) {
+        window.open(doc.storage_path, "_blank", "noopener,noreferrer");
+        return;
+      }
+
+      const { data, error } = await supabase.storage.from("documents").createSignedUrl(doc.storage_path, 60);
+      if (error || !data?.signedUrl) throw error ?? new Error("Unable to create download link");
+      window.open(data.signedUrl, "_blank", "noopener,noreferrer");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Download failed");
+    }
   };
 
   const handleDelete = async (doc: DocRow) => {
