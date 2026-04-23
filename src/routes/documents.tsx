@@ -7,6 +7,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { Upload, FileText, Download, Trash2, Sparkles, Loader2, AlertCircle, CheckCircle2 } from "lucide-react";
 import { toast } from "sonner";
+import { uploadToCloudinary } from "@/lib/cloudinary";
 
 type DocRow = {
   id: string;
@@ -87,14 +88,9 @@ function DocumentsPage() {
 
     setUploading(true);
     try {
-      const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
-      const storagePath = `${user.id}/${Date.now()}_${safeName}`;
-
-      const { error: uploadErr } = await supabase.storage.from("documents").upload(storagePath, file, {
-        cacheControl: "3600",
-        upsert: false,
-      });
-      if (uploadErr) throw uploadErr;
+      // Upload directly to Cloudinary (unsigned preset). Returns a public secure_url.
+      const uploaded = await uploadToCloudinary(file, `revisemaster/${user.id}`);
+      const storagePath = uploaded.secure_url;
 
       const { data: doc, error: insErr } = await supabase
         .from("documents")
