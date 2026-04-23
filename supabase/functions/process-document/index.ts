@@ -304,6 +304,23 @@ Deno.serve(async (req) => {
         console.warn(`Document fetch failed (${resp.status}) for ${candidateUrl}`);
       }
 
+      // If Cloudinary returned 401/403, the asset is private/authenticated —
+      // sign a delivery URL with the API secret and retry.
+      if (!response && (lastStatus === 401 || lastStatus === 403)) {
+        for (const candidateUrl of candidateUrls) {
+          const signed = await signCloudinaryUrl(candidateUrl);
+          if (!signed) continue;
+          const resp = await fetch(signed);
+          if (resp.ok) {
+            response = resp;
+            resolvedUrl = candidateUrl; // keep stored URL stable; signature is short-lived
+            break;
+          }
+          lastStatus = resp.status;
+          console.warn(`Signed Cloudinary fetch failed (${resp.status}) for ${candidateUrl}`);
+        }
+      }
+
       if (!response) throw new Error(`Failed to fetch file from URL: ${lastStatus ?? "unknown"}`);
       if (resolvedUrl !== doc.storage_path) {
         await admin.from("documents").update({ storage_path: resolvedUrl }).eq("id", documentId);
