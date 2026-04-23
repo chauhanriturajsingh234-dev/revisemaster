@@ -22,7 +22,12 @@ export async function uploadToCloudinary(
   file: File,
   opts?: { folder?: string; onProgress?: (pct: number) => void },
 ): Promise<CloudinaryUploadResult> {
-  const url = `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/auto/upload`;
+  // Use "raw" for documents (PDF/DOCX/TXT) so the delivery URL is /raw/upload/
+  // which is publicly fetchable. Cloudinary blocks PDF delivery via /image/upload/
+  // by default (returns 401), which is why "auto" did not work for PDFs.
+  const isImage = file.type.startsWith("image/");
+  const resourceType = isImage ? "image" : "raw";
+  const url = `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/${resourceType}/upload`;
   const form = new FormData();
   form.append("file", file);
   form.append("upload_preset", CLOUDINARY_UPLOAD_PRESET);
