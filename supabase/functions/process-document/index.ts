@@ -63,7 +63,7 @@ async function extractText(bytes: Uint8Array, mime: string, name: string): Promi
     return new TextDecoder().decode(bytes);
   }
   if (mime === "application/vnd.openxmlformats-officedocument.wordprocessingml.document" || lower.endsWith(".docx")) {
-    const docxBuffer = new Uint8Array(bytes).slice().buffer;
+    const docxBuffer = new Uint8Array(bytes).slice().buffer as ArrayBuffer;
     const result = await mammoth.extractRawText({ arrayBuffer: docxBuffer });
     return result.value || "";
   }
