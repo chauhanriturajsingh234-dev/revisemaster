@@ -216,10 +216,17 @@ Deno.serve(async (req) => {
 
     await admin.from("documents").update({ status: "processing", error: null }).eq("id", documentId);
 
-    // Download file
-    const { data: file, error: dlErr } = await admin.storage.from("documents").download(doc.storage_path);
-    if (dlErr || !file) throw new Error(dlErr?.message ?? "Download failed");
-    const bytes = new Uint8Array(await file.arrayBuffer());
+    // Download file. storage_path is a Cloudinary URL (or legacy Supabase Storage path).
+    let bytes: Uint8Array;
+    if (/^https?:\/\//i.test(doc.storage_path)) {
+      const resp = await fetch(doc.storage_path);
+      if (!resp.ok) throw new Error(`Failed to fetch file from URL: ${resp.status}`);
+      bytes = new Uint8Array(await resp.arrayBuffer());
+    } else {
+      const { data: file, error: dlErr } = await admin.storage.from("documents").download(doc.storage_path);
+      if (dlErr || !file) throw new Error(dlErr?.message ?? "Download failed");
+      bytes = new Uint8Array(await file.arrayBuffer());
+    }
 
     const text = await extractText(bytes, doc.mime_type, doc.filename);
     if (text.trim().length < 50) throw new Error("Document has too little text to generate cards.");
