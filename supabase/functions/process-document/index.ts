@@ -211,12 +211,12 @@ function getCloudinaryFetchCandidates(storagePath: string, mimeType: string, fil
 }
 
 // Build a signed Cloudinary delivery URL when the asset is private/authenticated.
-// Uses HMAC-SHA1 over `public_id=<id>&timestamp=<ts><api_secret>` per Cloudinary spec,
-// truncated to 8 hex chars (`s--<sig>--`) for the URL signature segment.
+// Cloudinary delivery signatures are based on the URL path segments that come
+// after the signature component: version/public_id(+ext), then SHA'd with the API secret,
+// URL-safe base64 encoded, and truncated to 8 chars in `s--<sig>--` form.
 async function signCloudinaryUrl(rawUrl: string): Promise<string | null> {
-  const apiKey = Deno.env.get("CLOUDINARY_API_KEY");
   const apiSecret = Deno.env.get("CLOUDINARY_API_SECRET");
-  if (!apiKey || !apiSecret) return null;
+  if (!apiSecret) return null;
 
   try {
     const url = new URL(rawUrl);
@@ -227,24 +227,14 @@ async function signCloudinaryUrl(rawUrl: string): Promise<string | null> {
     const [, resourceType, deliveryType, ...rest] = parts;
     if (!resourceType || !deliveryType || rest.length === 0) return null;
 
-    // Drop optional version segment (v123...) — public_id excludes it.
-    const tail = rest[0].match(/^v\d+$/) ? rest.slice(1) : rest;
-    const publicId = tail.join("/");
-    if (!publicId) return null;
-
-    const timestamp = Math.floor(Date.now() / 1000);
-    const toSign = `public_id=${publicId}&timestamp=${timestamp}${apiSecret}`;
+    const toSign = `${rest.join("/")}${apiSecret}`;
     const sigBytes = await crypto.subtle.digest("SHA-1", new TextEncoder().encode(toSign));
-    const sigHex = Array.from(new Uint8Array(sigBytes))
-      .map((b) => b.toString(16).padStart(2, "0"))
-      .join("");
-    const signed = `s--${sigHex.slice(0, 8)}--`;
+    const rawDigest = String.fromCharCode(...new Uint8Array(sigBytes));
+    const signed = `s--${btoa(rawDigest).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "").slice(0, 8)}--`;
 
     // Insert the signature segment right after the delivery type.
     const newPath = `/${[parts[0], resourceType, deliveryType, signed, ...rest].join("/")}`;
     url.pathname = newPath;
-    url.searchParams.set("api_key", apiKey);
-    url.searchParams.set("timestamp", String(timestamp));
     return url.toString();
   } catch {
     return null;
