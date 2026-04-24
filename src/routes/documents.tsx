@@ -117,7 +117,11 @@ function DocumentsPage() {
       });
       if (fnErr || fnData?.ok === false) {
         const rawMessage = fnErr?.message ?? fnData?.error ?? "Processing failed to start";
-        const message = rawMessage.includes("AI credits exhausted")
+        const message = rawMessage.includes("Cloudinary PDF delivery is disabled")
+          ? "Cloudinary is blocking PDF delivery. In Cloudinary, go to Settings → Security and enable PDF and ZIP file delivery, then retry."
+          : rawMessage.includes("Cloudinary is blocking delivery")
+            ? "Cloudinary is blocking this document type. Check Cloudinary Settings → Security, then retry."
+          : rawMessage.includes("AI credits exhausted")
           ? "AI credits are exhausted. Add credits in workspace settings to generate flashcards."
           : rawMessage.includes("AI rate limit")
             ? "AI is temporarily rate limited. Please wait a moment and try again."
@@ -164,7 +168,11 @@ function DocumentsPage() {
       const { data, error } = await supabase.functions.invoke("process-document", { body: { documentId: doc.id } });
       if (error || data?.ok === false) {
         const rawMessage = error?.message ?? data?.error ?? "Retry failed";
-        const message = rawMessage.includes("AI credits exhausted")
+        const message = rawMessage.includes("Cloudinary PDF delivery is disabled")
+          ? "Cloudinary is blocking PDF delivery. In Cloudinary, go to Settings → Security and enable PDF and ZIP file delivery, then retry."
+          : rawMessage.includes("Cloudinary is blocking delivery")
+            ? "Cloudinary is blocking this document type. Check Cloudinary Settings → Security, then retry."
+          : rawMessage.includes("AI credits exhausted")
           ? "AI credits are exhausted. Add credits in workspace settings to generate flashcards."
           : rawMessage.includes("AI rate limit")
             ? "AI is temporarily rate limited. Please wait a moment and try again."
