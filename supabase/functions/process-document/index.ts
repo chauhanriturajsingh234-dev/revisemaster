@@ -241,6 +241,34 @@ async function signCloudinaryUrl(rawUrl: string): Promise<string | null> {
   }
 }
 
+async function getCloudinaryAssetMetadata(storagePath: string): Promise<{ exists: boolean } | null> {
+  const apiKey = Deno.env.get("CLOUDINARY_API_KEY");
+  const apiSecret = Deno.env.get("CLOUDINARY_API_SECRET");
+  if (!apiKey || !apiSecret || !/^https?:\/\//i.test(storagePath)) return null;
+
+  try {
+    const url = new URL(storagePath);
+    const parts = url.pathname.split("/").filter(Boolean);
+    if (parts.length < 4) return null;
+
+    const [, resourceType, deliveryType, ...rest] = parts;
+    const publicIdParts = rest[0]?.match(/^v\d+$/) ? rest.slice(1) : rest;
+    if (!resourceType || !deliveryType || publicIdParts.length === 0) return null;
+
+    const publicIdPath = publicIdParts.map((part) => encodeURIComponent(part)).join("/");
+    const metaUrl = `https://api.cloudinary.com/v1_1/${parts[0]}/resources/${resourceType}/${deliveryType}/${publicIdPath}`;
+    const resp = await fetch(metaUrl, {
+      headers: { Authorization: `Basic ${btoa(`${apiKey}:${apiSecret}`)}` },
+    });
+
+    if (resp.ok) return { exists: true };
+    if (resp.status === 404) return { exists: false };
+    return null;
+  } catch {
+    return null;
+  }
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
@@ -308,6 +336,22 @@ Deno.serve(async (req) => {
           }
           lastStatus = resp.status;
           console.warn(`Signed Cloudinary fetch failed (${resp.status}) for ${candidateUrl}`);
+        }
+      }
+
+      if (!response && (lastStatus === 401 || lastStatus === 403)) {
+        const metadata = await getCloudinaryAssetMetadata(doc.storage_path);
+        if (metadata?.exists) {
+          const isPdf = doc.mime_type === "application/pdf" || /\.pdf$/i.test(doc.filename);
+          if (isPdf) {
+            throw new Error(
+              "Cloudinary PDF delivery is disabled for this account. Enable PDF and ZIP file delivery in Cloudinary Settings → Security, then retry.",
+            );
+          }
+
+          throw new Error(
+            "Cloudinary is blocking delivery for this document type. Check Cloudinary Settings → Security, then retry.",
+          );
         }
       }
 
