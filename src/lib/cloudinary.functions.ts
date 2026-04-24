@@ -46,7 +46,6 @@ export const createCloudinaryUploadSignature = createServerFn({ method: "POST" }
     const timestamp = Math.floor(Date.now() / 1000);
     const paramsToSign: Record<string, string> = {
       timestamp: String(timestamp),
-      resource_type: data.resourceType,
     };
 
     if (data.folder) paramsToSign.folder = data.folder;

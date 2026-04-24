@@ -56,7 +56,6 @@ export const Route = createFileRoute("/api/cloudinary/signature")({
           const params = [
             folder ? `folder=${folder}` : "",
             publicId ? `public_id=${publicId}` : "",
-            `resource_type=${resourceType}`,
             `timestamp=${timestamp}`,
           ]
             .filter(Boolean)
