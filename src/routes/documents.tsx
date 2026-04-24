@@ -89,7 +89,10 @@ function DocumentsPage() {
     setUploading(true);
     try {
       // Upload directly to Cloudinary (unsigned preset). Returns a public secure_url.
-      const uploaded = await uploadToCloudinary(file, `revisemaster/${user.id}`);
+      const uploaded = await uploadToCloudinary(file, {
+        folder: `revisemaster/${user.id}`,
+        kind: "document",
+      });
       const storagePath = uploaded.secure_url;
 
       const { data: doc, error: insErr } = await supabase

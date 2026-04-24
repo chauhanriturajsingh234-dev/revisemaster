@@ -15,6 +15,7 @@ import { Route as AuthRouteImport } from './routes/auth'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as DeckDeckIdRouteImport } from './routes/deck.$deckId'
 import { Route as DeckDeckIdStudyRouteImport } from './routes/deck_.$deckId.study'
+import { Route as ApiCloudinarySignatureRouteImport } from './routes/api.cloudinary.signature'
 
 const ResetPasswordRoute = ResetPasswordRouteImport.update({
   id: '/reset-password',
@@ -46,6 +47,11 @@ const DeckDeckIdStudyRoute = DeckDeckIdStudyRouteImport.update({
   path: '/deck/$deckId/study',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiCloudinarySignatureRoute = ApiCloudinarySignatureRouteImport.update({
+  id: '/api/cloudinary/signature',
+  path: '/api/cloudinary/signature',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -53,6 +59,7 @@ export interface FileRoutesByFullPath {
   '/documents': typeof DocumentsRoute
   '/reset-password': typeof ResetPasswordRoute
   '/deck/$deckId': typeof DeckDeckIdRoute
+  '/api/cloudinary/signature': typeof ApiCloudinarySignatureRoute
   '/deck/$deckId/study': typeof DeckDeckIdStudyRoute
 }
 export interface FileRoutesByTo {
@@ -61,6 +68,7 @@ export interface FileRoutesByTo {
   '/documents': typeof DocumentsRoute
   '/reset-password': typeof ResetPasswordRoute
   '/deck/$deckId': typeof DeckDeckIdRoute
+  '/api/cloudinary/signature': typeof ApiCloudinarySignatureRoute
   '/deck/$deckId/study': typeof DeckDeckIdStudyRoute
 }
 export interface FileRoutesById {
@@ -70,6 +78,7 @@ export interface FileRoutesById {
   '/documents': typeof DocumentsRoute
   '/reset-password': typeof ResetPasswordRoute
   '/deck/$deckId': typeof DeckDeckIdRoute
+  '/api/cloudinary/signature': typeof ApiCloudinarySignatureRoute
   '/deck_/$deckId/study': typeof DeckDeckIdStudyRoute
 }
 export interface FileRouteTypes {
@@ -80,6 +89,7 @@ export interface FileRouteTypes {
     | '/documents'
     | '/reset-password'
     | '/deck/$deckId'
+    | '/api/cloudinary/signature'
     | '/deck/$deckId/study'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -88,6 +98,7 @@ export interface FileRouteTypes {
     | '/documents'
     | '/reset-password'
     | '/deck/$deckId'
+    | '/api/cloudinary/signature'
     | '/deck/$deckId/study'
   id:
     | '__root__'
@@ -96,6 +107,7 @@ export interface FileRouteTypes {
     | '/documents'
     | '/reset-password'
     | '/deck/$deckId'
+    | '/api/cloudinary/signature'
     | '/deck_/$deckId/study'
   fileRoutesById: FileRoutesById
 }
@@ -105,6 +117,7 @@ export interface RootRouteChildren {
   DocumentsRoute: typeof DocumentsRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
   DeckDeckIdRoute: typeof DeckDeckIdRoute
+  ApiCloudinarySignatureRoute: typeof ApiCloudinarySignatureRoute
   DeckDeckIdStudyRoute: typeof DeckDeckIdStudyRoute
 }
 
@@ -152,6 +165,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DeckDeckIdStudyRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/cloudinary/signature': {
+      id: '/api/cloudinary/signature'
+      path: '/api/cloudinary/signature'
+      fullPath: '/api/cloudinary/signature'
+      preLoaderRoute: typeof ApiCloudinarySignatureRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -161,6 +181,7 @@ const rootRouteChildren: RootRouteChildren = {
   DocumentsRoute: DocumentsRoute,
   ResetPasswordRoute: ResetPasswordRoute,
   DeckDeckIdRoute: DeckDeckIdRoute,
+  ApiCloudinarySignatureRoute: ApiCloudinarySignatureRoute,
   DeckDeckIdStudyRoute: DeckDeckIdStudyRoute,
 }
 export const routeTree = rootRouteImport
