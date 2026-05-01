@@ -5,6 +5,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import * as mammoth from "https://esm.sh/mammoth@1.8.0";
 import { extractText as extractPdfText, getDocumentProxy } from "https://esm.sh/unpdf@0.12.1";
 import { generateDeckFromDocumentText, type GeneratedDeck } from "./card-generation.ts";
+import { generateRuleBasedDeck } from "./rule-based-cards.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
