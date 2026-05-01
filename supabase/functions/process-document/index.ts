@@ -370,11 +370,39 @@ Deno.serve(async (req) => {
     const text = await extractText(bytes, doc.mime_type, doc.filename);
     if (text.trim().length < 50) throw new Error("Document has too little text to generate cards.");
 
-    const generated = await generateDeckFromDocumentText({
-      text,
-      filename: doc.filename,
-      requestChunkCards: (chunkInput) => requestChunkCards(chunkInput),
-    });
+    let generated: GeneratedDeck;
+    let usedFallback = false;
+    let fallbackReason: string | null = null;
+    try {
+      generated = await generateDeckFromDocumentText({
+        text,
+        filename: doc.filename,
+        requestChunkCards: (chunkInput) => requestChunkCards(chunkInput),
+      });
+      if (!generated.cards.length) throw new Error("AI returned no cards");
+    } catch (aiErr) {
+      const aiMsg = aiErr instanceof Error ? aiErr.message : String(aiErr);
+      const isCreditOrRate =
+        aiMsg.includes("AI credits exhausted") ||
+        aiMsg.includes("AI rate limit") ||
+        aiMsg.includes("AI gateway error") ||
+        aiMsg.includes("AI did not return") ||
+        aiMsg.includes("AI returned no cards") ||
+        aiMsg.includes("LOVABLE_API_KEY");
+      if (!isCreditOrRate) throw aiErr;
+
+      console.warn("AI unavailable, falling back to rule-based generator:", aiMsg);
+      generated = generateRuleBasedDeck({ text, filename: doc.filename });
+      if (!generated.cards.length) {
+        throw new Error(
+          "AI is currently unavailable and the document didn't contain enough structured content to auto-generate cards. Try uploading clearer notes or create cards manually.",
+        );
+      }
+      usedFallback = true;
+      fallbackReason = aiMsg.includes("AI credits exhausted")
+        ? "AI credits exhausted — generated rule-based cards instead."
+        : "AI unavailable — generated rule-based cards instead.";
+    }
 
     // Create deck
     const { data: deck, error: deckErr } = await admin
@@ -401,12 +429,19 @@ Deno.serve(async (req) => {
       if (cardErr) throw new Error(cardErr.message);
     }
 
-    await admin.from("documents").update({ status: "ready", deck_id: deck.id }).eq("id", documentId);
+    await admin
+      .from("documents")
+      .update({
+        status: "ready",
+        deck_id: deck.id,
+        error: usedFallback ? fallbackReason : null,
+      })
+      .eq("id", documentId);
 
-    return new Response(JSON.stringify({ ok: true, deckId: deck.id, cards: rows.length }), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
-  } catch (e) {
+    return new Response(
+      JSON.stringify({ ok: true, deckId: deck.id, cards: rows.length, usedFallback, fallbackReason }),
+      { headers: { ...corsHeaders, "Content-Type": "application/json" } },
+    );
     const msg = e instanceof Error ? e.message : "Unknown error";
     const code = msg.includes("AI credits exhausted")
       ? "AI_CREDITS_EXHAUSTED"
