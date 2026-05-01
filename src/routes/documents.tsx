@@ -182,7 +182,11 @@ function DocumentsPage() {
         toast.error(message);
         return;
       }
-      toast.success("Re-processing…");
+      if (data?.usedFallback) {
+        toast.warning(data.fallbackReason ?? "AI unavailable — generated rule-based cards instead.");
+      } else {
+        toast.success("Re-processing…");
+      }
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Retry failed");
     }
