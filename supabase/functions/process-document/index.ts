@@ -442,6 +442,7 @@ Deno.serve(async (req) => {
       JSON.stringify({ ok: true, deckId: deck.id, cards: rows.length, usedFallback, fallbackReason }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
+  } catch (e) {
     const msg = e instanceof Error ? e.message : "Unknown error";
     const code = msg.includes("AI credits exhausted")
       ? "AI_CREDITS_EXHAUSTED"
