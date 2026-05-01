@@ -36,6 +36,13 @@ export function SiteHeader() {
               >
                 Documents
               </Link>
+              <Link
+                to="/import-anki"
+                className="px-3 py-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                activeProps={{ className: "text-foreground bg-muted" }}
+              >
+                Import Anki
+              </Link>
               <Button
                 variant="ghost"
                 size="sm"
