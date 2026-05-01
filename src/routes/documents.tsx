@@ -127,6 +127,8 @@ function DocumentsPage() {
             ? "AI is temporarily rate limited. Please wait a moment and try again."
             : `Processing failed to start: ${rawMessage}`;
         toast.error(message);
+      } else if (fnData?.usedFallback) {
+        toast.warning(fnData.fallbackReason ?? "AI unavailable — generated rule-based cards instead.");
       }
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Upload failed");
@@ -180,7 +182,11 @@ function DocumentsPage() {
         toast.error(message);
         return;
       }
-      toast.success("Re-processing…");
+      if (data?.usedFallback) {
+        toast.warning(data.fallbackReason ?? "AI unavailable — generated rule-based cards instead.");
+      } else {
+        toast.success("Re-processing…");
+      }
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Retry failed");
     }
