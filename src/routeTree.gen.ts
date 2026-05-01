@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
+import { Route as ImportAnkiRouteImport } from './routes/import-anki'
 import { Route as DocumentsRouteImport } from './routes/documents'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as IndexRouteImport } from './routes/index'
@@ -20,6 +21,11 @@ import { Route as ApiCloudinarySignatureRouteImport } from './routes/api.cloudin
 const ResetPasswordRoute = ResetPasswordRouteImport.update({
   id: '/reset-password',
   path: '/reset-password',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ImportAnkiRoute = ImportAnkiRouteImport.update({
+  id: '/import-anki',
+  path: '/import-anki',
   getParentRoute: () => rootRouteImport,
 } as any)
 const DocumentsRoute = DocumentsRouteImport.update({
@@ -57,6 +63,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/documents': typeof DocumentsRoute
+  '/import-anki': typeof ImportAnkiRoute
   '/reset-password': typeof ResetPasswordRoute
   '/deck/$deckId': typeof DeckDeckIdRoute
   '/api/cloudinary/signature': typeof ApiCloudinarySignatureRoute
@@ -66,6 +73,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/documents': typeof DocumentsRoute
+  '/import-anki': typeof ImportAnkiRoute
   '/reset-password': typeof ResetPasswordRoute
   '/deck/$deckId': typeof DeckDeckIdRoute
   '/api/cloudinary/signature': typeof ApiCloudinarySignatureRoute
@@ -76,6 +84,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/documents': typeof DocumentsRoute
+  '/import-anki': typeof ImportAnkiRoute
   '/reset-password': typeof ResetPasswordRoute
   '/deck/$deckId': typeof DeckDeckIdRoute
   '/api/cloudinary/signature': typeof ApiCloudinarySignatureRoute
@@ -87,6 +96,7 @@ export interface FileRouteTypes {
     | '/'
     | '/auth'
     | '/documents'
+    | '/import-anki'
     | '/reset-password'
     | '/deck/$deckId'
     | '/api/cloudinary/signature'
@@ -96,6 +106,7 @@ export interface FileRouteTypes {
     | '/'
     | '/auth'
     | '/documents'
+    | '/import-anki'
     | '/reset-password'
     | '/deck/$deckId'
     | '/api/cloudinary/signature'
@@ -105,6 +116,7 @@ export interface FileRouteTypes {
     | '/'
     | '/auth'
     | '/documents'
+    | '/import-anki'
     | '/reset-password'
     | '/deck/$deckId'
     | '/api/cloudinary/signature'
@@ -115,6 +127,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthRoute: typeof AuthRoute
   DocumentsRoute: typeof DocumentsRoute
+  ImportAnkiRoute: typeof ImportAnkiRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
   DeckDeckIdRoute: typeof DeckDeckIdRoute
   ApiCloudinarySignatureRoute: typeof ApiCloudinarySignatureRoute
@@ -128,6 +141,13 @@ declare module '@tanstack/react-router' {
       path: '/reset-password'
       fullPath: '/reset-password'
       preLoaderRoute: typeof ResetPasswordRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/import-anki': {
+      id: '/import-anki'
+      path: '/import-anki'
+      fullPath: '/import-anki'
+      preLoaderRoute: typeof ImportAnkiRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/documents': {
@@ -179,6 +199,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthRoute: AuthRoute,
   DocumentsRoute: DocumentsRoute,
+  ImportAnkiRoute: ImportAnkiRoute,
   ResetPasswordRoute: ResetPasswordRoute,
   DeckDeckIdRoute: DeckDeckIdRoute,
   ApiCloudinarySignatureRoute: ApiCloudinarySignatureRoute,
