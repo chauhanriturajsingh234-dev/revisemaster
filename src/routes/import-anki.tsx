@@ -93,10 +93,11 @@ function ImportAnkiPage() {
           transition={{ duration: 0.4 }}
           className="mb-8"
         >
-          <h1 className="font-display text-4xl tracking-tight mb-2">Import Anki Deck</h1>
+          <h1 className="font-display text-4xl tracking-tight mb-2">Import Deck</h1>
           <p className="text-muted-foreground">
-            Upload an Anki <code className="text-foreground">.apkg</code> file. We'll read its notes and turn
-            them into a flashcard deck. No AI required.
+            Upload an Anki <code className="text-foreground">.apkg</code> file or a{" "}
+            <code className="text-foreground">.csv</code> with question/answer columns. We'll turn it
+            into a flashcard deck — no AI required.
           </p>
         </motion.div>
 
@@ -112,12 +113,14 @@ function ImportAnkiPage() {
           <div className="mx-auto h-14 w-14 rounded-full bg-primary/10 text-primary flex items-center justify-center mb-4">
             <FileArchive className="h-6 w-6" />
           </div>
-          <p className="font-display text-xl mb-1">Drop your .apkg file</p>
-          <p className="text-sm text-muted-foreground mb-5">Only Anki .apkg packages are supported</p>
+          <p className="font-display text-xl mb-1">Drop your .apkg or .csv file</p>
+          <p className="text-sm text-muted-foreground mb-5">
+            CSV format: first column = question, second column = answer (header row optional)
+          </p>
           <input
             ref={fileRef}
             type="file"
-            accept=".apkg"
+            accept=".apkg,.csv,text/csv"
             className="hidden"
             onChange={(e) => {
               const f = e.target.files?.[0];
@@ -130,7 +133,7 @@ function ImportAnkiPage() {
             className="gap-2 rounded-full px-6"
           >
             {parsing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
-            {parsing ? "Reading…" : "Import Anki Deck"}
+            {parsing ? "Reading…" : "Choose File"}
           </Button>
         </div>
 
