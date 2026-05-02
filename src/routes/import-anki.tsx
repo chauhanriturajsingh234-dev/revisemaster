@@ -7,6 +7,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { Upload, Loader2, FileArchive, CheckCircle2 } from "lucide-react";
 import { toast } from "sonner";
 import { parseApkg, type AnkiCard } from "@/lib/anki-import";
+import { parseCsv } from "@/lib/csv-import";
 import { createDeck, createCard } from "@/lib/storage";
 
 export const Route = createFileRoute("/import-anki")({
@@ -31,23 +32,25 @@ function ImportAnkiPage() {
   if (!loading && !user) return <Navigate to="/auth" />;
 
   const handleFile = async (file: File) => {
-    if (!/\.apkg$/i.test(file.name)) {
-      toast.error("Please choose a .apkg file.");
+    const isApkg = /\.apkg$/i.test(file.name);
+    const isCsv = /\.csv$/i.test(file.name) || file.type === "text/csv";
+    if (!isApkg && !isCsv) {
+      toast.error("Please choose a .apkg or .csv file.");
       return;
     }
     setParsing(true);
     setCards(null);
     try {
-      const parsed = await parseApkg(file);
+      const parsed = isApkg ? await parseApkg(file) : await parseCsv(file);
       if (!parsed.length) {
-        toast.error("No flashcards found in this deck.");
+        toast.error("No flashcards found in this file.");
       } else {
         setCards(parsed);
-        setDeckName(file.name.replace(/\.apkg$/i, ""));
+        setDeckName(file.name.replace(/\.(apkg|csv)$/i, ""));
         toast.success(`Found ${parsed.length} cards.`);
       }
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Failed to read .apkg file.");
+      toast.error(e instanceof Error ? e.message : "Failed to read file.");
     } finally {
       setParsing(false);
       if (fileRef.current) fileRef.current.value = "";
