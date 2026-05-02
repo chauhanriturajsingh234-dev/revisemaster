@@ -62,7 +62,7 @@ function ImportAnkiPage() {
     const name = deckName.trim() || "Imported Anki Deck";
     setImporting(true);
     try {
-      const deck = await createDeck({ name, description: `Imported from Anki (${cards.length} cards)` });
+      const deck = await createDeck({ name, description: `Imported deck (${cards.length} cards)` });
       let ok = 0;
       for (const c of cards) {
         try {
