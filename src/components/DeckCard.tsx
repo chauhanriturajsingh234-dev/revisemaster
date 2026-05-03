@@ -1,6 +1,6 @@
 import { Link } from "@tanstack/react-router";
 import { motion } from "framer-motion";
-import { Play, MoreVertical, FolderInput, Check } from "lucide-react";
+import { Play, MoreVertical, FolderInput, Check, Brain } from "lucide-react";
 import type { DeckWithStats, DeckGroup } from "@/lib/storage";
 import { moveDeckToGroup } from "@/lib/storage";
 import {
@@ -74,14 +74,24 @@ export function DeckCard({
 
       <div className="absolute top-5 right-5 flex items-center gap-1.5 z-10">
         {total > 0 && (
-          <Link
-            to="/deck/$deckId/study"
-            params={{ deckId: deck.id }}
-            className="inline-flex items-center gap-1.5 rounded-full bg-primary text-primary-foreground px-3 py-1.5 text-xs font-medium shadow-soft hover:opacity-90 transition-opacity"
-            aria-label="Start study session"
-          >
-            <Play className="h-3 w-3 fill-current" /> Study
-          </Link>
+          <>
+            <Link
+              to="/deck/$deckId/quiz"
+              params={{ deckId: deck.id }}
+              className="inline-flex items-center gap-1.5 rounded-full bg-muted text-foreground px-3 py-1.5 text-xs font-medium shadow-soft hover:bg-muted/70 transition-colors"
+              aria-label="Start quiz"
+            >
+              <Brain className="h-3 w-3" /> Quiz
+            </Link>
+            <Link
+              to="/deck/$deckId/study"
+              params={{ deckId: deck.id }}
+              className="inline-flex items-center gap-1.5 rounded-full bg-primary text-primary-foreground px-3 py-1.5 text-xs font-medium shadow-soft hover:opacity-90 transition-opacity"
+              aria-label="Start study session"
+            >
+              <Play className="h-3 w-3 fill-current" /> Study
+            </Link>
+          </>
         )}
         <DropdownMenu>
           <DropdownMenuTrigger

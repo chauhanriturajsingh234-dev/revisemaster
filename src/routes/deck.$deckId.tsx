@@ -14,7 +14,7 @@ import {
   type Card,
 } from "@/lib/storage";
 import { useAuth } from "@/hooks/useAuth";
-import { ArrowLeft, Plus, Play, Trash2 } from "lucide-react";
+import { ArrowLeft, Plus, Play, Trash2, Brain } from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/deck/$deckId")({
@@ -148,11 +148,18 @@ function DeckPage() {
               <Trash2 className="h-4 w-4" />
             </Button>
             {cards.length > 0 ? (
-              <Button asChild size="lg" className="gap-2 rounded-full px-6 flex-1 sm:flex-initial">
-                <Link to="/deck/$deckId/study" params={{ deckId: deck.id }}>
-                  <Play className="h-4 w-4 fill-current" /> Study now ({cards.length})
-                </Link>
-              </Button>
+              <>
+                <Button asChild variant="outline" size="lg" className="gap-2 rounded-full px-6">
+                  <Link to="/deck/$deckId/quiz" params={{ deckId: deck.id }}>
+                    <Brain className="h-4 w-4" /> Start Quiz
+                  </Link>
+                </Button>
+                <Button asChild size="lg" className="gap-2 rounded-full px-6 flex-1 sm:flex-initial">
+                  <Link to="/deck/$deckId/study" params={{ deckId: deck.id }}>
+                    <Play className="h-4 w-4 fill-current" /> Study now ({cards.length})
+                  </Link>
+                </Button>
+              </>
             ) : (
               <Button size="lg" className="gap-2 rounded-full px-6 flex-1 sm:flex-initial" disabled>
                 <Play className="h-4 w-4 fill-current" /> Study now (0)
