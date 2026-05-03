@@ -161,6 +161,13 @@ function DeckPage() {
                     </Link>
                   </Button>
                 )}
+                {cards.length >= 4 && (
+                  <Button asChild variant="outline" size="lg" className="gap-2 rounded-full px-6">
+                    <Link to="/deck/$deckId/pairmcq" params={{ deckId: deck.id }}>
+                      <Brain className="h-4 w-4" /> Pair MCQ
+                    </Link>
+                  </Button>
+                )}
                 <Button asChild size="lg" className="gap-2 rounded-full px-6 flex-1 sm:flex-initial">
                   <Link to="/deck/$deckId/study" params={{ deckId: deck.id }}>
                     <Play className="h-4 w-4 fill-current" /> Study now ({cards.length})
