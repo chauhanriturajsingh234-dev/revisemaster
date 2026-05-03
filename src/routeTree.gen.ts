@@ -16,6 +16,7 @@ import { Route as AuthRouteImport } from './routes/auth'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as DeckDeckIdRouteImport } from './routes/deck.$deckId'
 import { Route as DeckDeckIdStudyRouteImport } from './routes/deck_.$deckId.study'
+import { Route as DeckDeckIdSmcqRouteImport } from './routes/deck_.$deckId.smcq'
 import { Route as DeckDeckIdQuizRouteImport } from './routes/deck_.$deckId.quiz'
 import { Route as ApiCloudinarySignatureRouteImport } from './routes/api.cloudinary.signature'
 
@@ -54,6 +55,11 @@ const DeckDeckIdStudyRoute = DeckDeckIdStudyRouteImport.update({
   path: '/deck/$deckId/study',
   getParentRoute: () => rootRouteImport,
 } as any)
+const DeckDeckIdSmcqRoute = DeckDeckIdSmcqRouteImport.update({
+  id: '/deck_/$deckId/smcq',
+  path: '/deck/$deckId/smcq',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const DeckDeckIdQuizRoute = DeckDeckIdQuizRouteImport.update({
   id: '/deck_/$deckId/quiz',
   path: '/deck/$deckId/quiz',
@@ -74,6 +80,7 @@ export interface FileRoutesByFullPath {
   '/deck/$deckId': typeof DeckDeckIdRoute
   '/api/cloudinary/signature': typeof ApiCloudinarySignatureRoute
   '/deck/$deckId/quiz': typeof DeckDeckIdQuizRoute
+  '/deck/$deckId/smcq': typeof DeckDeckIdSmcqRoute
   '/deck/$deckId/study': typeof DeckDeckIdStudyRoute
 }
 export interface FileRoutesByTo {
@@ -85,6 +92,7 @@ export interface FileRoutesByTo {
   '/deck/$deckId': typeof DeckDeckIdRoute
   '/api/cloudinary/signature': typeof ApiCloudinarySignatureRoute
   '/deck/$deckId/quiz': typeof DeckDeckIdQuizRoute
+  '/deck/$deckId/smcq': typeof DeckDeckIdSmcqRoute
   '/deck/$deckId/study': typeof DeckDeckIdStudyRoute
 }
 export interface FileRoutesById {
@@ -97,6 +105,7 @@ export interface FileRoutesById {
   '/deck/$deckId': typeof DeckDeckIdRoute
   '/api/cloudinary/signature': typeof ApiCloudinarySignatureRoute
   '/deck_/$deckId/quiz': typeof DeckDeckIdQuizRoute
+  '/deck_/$deckId/smcq': typeof DeckDeckIdSmcqRoute
   '/deck_/$deckId/study': typeof DeckDeckIdStudyRoute
 }
 export interface FileRouteTypes {
@@ -110,6 +119,7 @@ export interface FileRouteTypes {
     | '/deck/$deckId'
     | '/api/cloudinary/signature'
     | '/deck/$deckId/quiz'
+    | '/deck/$deckId/smcq'
     | '/deck/$deckId/study'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -121,6 +131,7 @@ export interface FileRouteTypes {
     | '/deck/$deckId'
     | '/api/cloudinary/signature'
     | '/deck/$deckId/quiz'
+    | '/deck/$deckId/smcq'
     | '/deck/$deckId/study'
   id:
     | '__root__'
@@ -132,6 +143,7 @@ export interface FileRouteTypes {
     | '/deck/$deckId'
     | '/api/cloudinary/signature'
     | '/deck_/$deckId/quiz'
+    | '/deck_/$deckId/smcq'
     | '/deck_/$deckId/study'
   fileRoutesById: FileRoutesById
 }
@@ -144,6 +156,7 @@ export interface RootRouteChildren {
   DeckDeckIdRoute: typeof DeckDeckIdRoute
   ApiCloudinarySignatureRoute: typeof ApiCloudinarySignatureRoute
   DeckDeckIdQuizRoute: typeof DeckDeckIdQuizRoute
+  DeckDeckIdSmcqRoute: typeof DeckDeckIdSmcqRoute
   DeckDeckIdStudyRoute: typeof DeckDeckIdStudyRoute
 }
 
@@ -198,6 +211,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DeckDeckIdStudyRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/deck_/$deckId/smcq': {
+      id: '/deck_/$deckId/smcq'
+      path: '/deck/$deckId/smcq'
+      fullPath: '/deck/$deckId/smcq'
+      preLoaderRoute: typeof DeckDeckIdSmcqRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/deck_/$deckId/quiz': {
       id: '/deck_/$deckId/quiz'
       path: '/deck/$deckId/quiz'
@@ -224,6 +244,7 @@ const rootRouteChildren: RootRouteChildren = {
   DeckDeckIdRoute: DeckDeckIdRoute,
   ApiCloudinarySignatureRoute: ApiCloudinarySignatureRoute,
   DeckDeckIdQuizRoute: DeckDeckIdQuizRoute,
+  DeckDeckIdSmcqRoute: DeckDeckIdSmcqRoute,
   DeckDeckIdStudyRoute: DeckDeckIdStudyRoute,
 }
 export const routeTree = rootRouteImport
