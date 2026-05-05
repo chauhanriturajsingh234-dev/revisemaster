@@ -340,11 +340,7 @@ function SmcqPage() {
                   )}
                 >
                   <span className="font-medium text-muted-foreground">{num}.</span>
-                  <span className="flex-1">
-                    <span className="font-medium">{s.topic}</span>
-                    <span className="text-muted-foreground"> : </span>
-                    <span>{s.answer}</span>
-                  </span>
+                  <span className="flex-1">{toSentence(s.topic, s.answer)}</span>
                   {showState && s.correct && <Check className="h-4 w-4 text-success shrink-0 mt-1" />}
                   {showState && !s.correct && <X className="h-4 w-4 text-destructive shrink-0 mt-1" />}
                 </li>
