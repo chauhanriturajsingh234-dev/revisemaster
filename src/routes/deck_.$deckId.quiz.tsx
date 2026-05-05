@@ -278,7 +278,7 @@ function QuizPage() {
         {answered && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex items-center justify-between gap-4">
             <p className={cn("text-sm font-medium", isCorrect ? "text-success" : "text-destructive")}>
-              {isCorrect ? "Correct!" : `Correct answer: ${q.card.back}`}
+              {isCorrect ? "Correct!" : `Correct answer: ${q.options[q.correct]} — ${q.card.back}`}
             </p>
             <Button onClick={next} className="rounded-full">
               {idx + 1 === quiz.length ? "See results" : "Next"}
