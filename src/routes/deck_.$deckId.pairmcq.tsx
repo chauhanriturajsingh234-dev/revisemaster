@@ -24,6 +24,15 @@ type Question = {
 
 const LETTERS = ["a", "b", "c", "d", "e"];
 
+function toSentence(topic: string, answer: string): string {
+  const t = topic.trim().replace(/[\s:?.!]+$/g, "");
+  const a = answer.trim().replace(/[\s.]+$/g, "");
+  if (!t) return a;
+  if (!a) return t;
+  const sentence = `${t} — ${a}`;
+  return sentence.endsWith(".") ? sentence : `${sentence}.`;
+}
+
 function shuffle<T>(arr: T[]): T[] {
   const a = [...arr];
   for (let i = a.length - 1; i > 0; i--) {
