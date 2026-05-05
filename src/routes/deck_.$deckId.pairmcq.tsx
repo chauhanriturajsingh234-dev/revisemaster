@@ -24,6 +24,15 @@ type Question = {
 
 const LETTERS = ["a", "b", "c", "d", "e"];
 
+function toSentence(topic: string, answer: string): string {
+  const t = topic.trim().replace(/[\s:?.!]+$/g, "");
+  const a = answer.trim().replace(/[\s.]+$/g, "");
+  if (!t) return a;
+  if (!a) return t;
+  const sentence = `${t} — ${a}`;
+  return sentence.endsWith(".") ? sentence : `${sentence}.`;
+}
+
 function shuffle<T>(arr: T[]): T[] {
   const a = [...arr];
   for (let i = a.length - 1; i > 0; i--) {
@@ -283,11 +292,7 @@ function PairMcqPage() {
                   showState && !s.correct && "border-destructive/40 bg-destructive/5",
                 )}>
                   <span className="font-medium text-muted-foreground">{i + 1}.</span>
-                  <span className="flex-1">
-                    <span className="font-medium">{s.topic}</span>
-                    <span className="text-muted-foreground"> : </span>
-                    <span>{s.answer}</span>
-                  </span>
+                  <span className="flex-1">{toSentence(s.topic, s.answer)}</span>
                   {showState && s.correct && <Check className="h-4 w-4 text-success shrink-0 mt-1" />}
                   {showState && !s.correct && <X className="h-4 w-4 text-destructive shrink-0 mt-1" />}
                 </li>
