@@ -24,19 +24,44 @@ function shuffle<T>(arr: T[]): T[] {
   return a;
 }
 
+// Condense an answer to a short, comparable snippet so options don't give
+// themselves away by length or extra context. Strips parenthetical asides,
+// keeps the first clause/sentence, and caps length.
+function condense(text: string, maxLen = 60): string {
+  let t = text.trim().replace(/\s+/g, " ");
+  // remove parenthetical/bracketed asides
+  t = t.replace(/\s*[\(\[][^)\]]*[\)\]]/g, "").trim();
+  // first sentence or clause
+  const cut = t.search(/[.;:\n]/);
+  if (cut > 0) t = t.slice(0, cut);
+  // first comma clause if still long
+  if (t.length > maxLen) {
+    const c = t.indexOf(",");
+    if (c > 10 && c < maxLen) t = t.slice(0, c);
+  }
+  if (t.length > maxLen) {
+    t = t.slice(0, maxLen).replace(/\s+\S*$/, "") + "…";
+  }
+  return t.replace(/[\s.,;:—-]+$/g, "").trim() || text.trim();
+}
+
 function buildQuiz(cards: Card[], count: number): QuizQ[] {
   const picked = shuffle(cards).slice(0, count);
   return picked.map((card) => {
-    const otherAnswers = Array.from(
-      new Set(
-        cards
-          .filter((c) => c.id !== card.id && c.back.trim() !== card.back.trim())
-          .map((c) => c.back),
-      ),
-    );
-    const distractors = shuffle(otherAnswers).slice(0, Math.min(3, otherAnswers.length));
-    const options = shuffle([card.back, ...distractors]);
-    return { card, options, correct: options.indexOf(card.back) };
+    const correctShort = condense(card.back);
+    const seen = new Set<string>([correctShort.toLowerCase()]);
+    const otherAnswers: string[] = [];
+    for (const c of shuffle(cards)) {
+      if (c.id === card.id) continue;
+      const s = condense(c.back);
+      const k = s.toLowerCase();
+      if (seen.has(k)) continue;
+      seen.add(k);
+      otherAnswers.push(s);
+      if (otherAnswers.length >= 3) break;
+    }
+    const options = shuffle([correctShort, ...otherAnswers]);
+    return { card, options, correct: options.indexOf(correctShort) };
   });
 }
 
