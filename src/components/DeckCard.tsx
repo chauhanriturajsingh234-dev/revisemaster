@@ -47,17 +47,56 @@ export function DeckCard({
       className="relative group"
     >
       <div className="rounded-2xl border border-border bg-card p-6 shadow-soft hover:shadow-[var(--shadow-glow)] hover:-translate-y-0.5 transition-all duration-300">
-        <Link to="/deck/$deckId" params={{ deckId: deck.id }} className="block">
-          <div className="flex items-start justify-between gap-3 mb-4">
-            <h3 className="font-display text-2xl leading-tight pr-24">{deck.name}</h3>
+        <div className="flex items-start justify-between gap-3 mb-3">
+          <Link
+            to="/deck/$deckId"
+            params={{ deckId: deck.id }}
+            className="flex-1 min-w-0"
+          >
+            <h3 className="font-display text-2xl leading-tight break-words">{deck.name}</h3>
+          </Link>
+          <div className="flex items-center gap-1.5 shrink-0">
             {due > 0 && (
-              <span className="shrink-0 inline-flex items-center gap-1.5 rounded-full bg-primary/10 text-primary px-2.5 py-1 text-xs font-medium">
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-primary/10 text-primary px-2.5 py-1 text-xs font-medium">
                 <span className="h-1.5 w-1.5 rounded-full bg-primary animate-pulse" />
                 {due} due
               </span>
             )}
+            <DropdownMenu>
+              <DropdownMenuTrigger
+                className="inline-flex items-center justify-center h-7 w-7 rounded-full bg-muted/80 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+                aria-label="Deck options"
+              >
+                <MoreVertical className="h-3.5 w-3.5" />
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-52">
+                <DropdownMenuLabel className="flex items-center gap-2 text-xs">
+                  <FolderInput className="h-3.5 w-3.5" /> Move to group
+                </DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={() => handleMove(null)}>
+                  <span className="flex-1">No group</span>
+                  {!deck.group_id && <Check className="h-3.5 w-3.5" />}
+                </DropdownMenuItem>
+                {groups.length > 0 && <DropdownMenuSeparator />}
+                {groups.map((g) => (
+                  <DropdownMenuItem key={g.id} onClick={() => handleMove(g.id)}>
+                    <span className="flex-1 truncate">{g.name}</span>
+                    {deck.group_id === g.id && <Check className="h-3.5 w-3.5" />}
+                  </DropdownMenuItem>
+                ))}
+                {groups.length === 0 && (
+                  <div className="px-2 py-1.5 text-xs text-muted-foreground">
+                    Create a group from the sidebar.
+                  </div>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
-          <p className="text-sm text-muted-foreground line-clamp-2 mb-6 min-h-[2.5rem]">
+        </div>
+
+        <Link to="/deck/$deckId" params={{ deckId: deck.id }} className="block">
+          <p className="text-sm text-muted-foreground line-clamp-2 mb-5 min-h-[2.5rem]">
             {deck.description || "No description"}
           </p>
           <div className="flex items-center justify-between text-xs text-muted-foreground mb-2">
@@ -71,11 +110,9 @@ export function DeckCard({
             />
           </div>
         </Link>
-      </div>
 
-      <div className="absolute top-5 right-5 flex items-center gap-1.5 z-10">
         {total > 0 && (
-          <>
+          <div className="mt-5 flex flex-wrap items-center gap-2">
             <Link
               to="/deck/$deckId/quiz"
               params={{ deckId: deck.id }}
@@ -92,38 +129,8 @@ export function DeckCard({
             >
               <Play className="h-3 w-3 fill-current" /> Study
             </Link>
-          </>
+          </div>
         )}
-        <DropdownMenu>
-          <DropdownMenuTrigger
-            className="inline-flex items-center justify-center h-7 w-7 rounded-full bg-muted/80 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
-            aria-label="Deck options"
-          >
-            <MoreVertical className="h-3.5 w-3.5" />
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-52">
-            <DropdownMenuLabel className="flex items-center gap-2 text-xs">
-              <FolderInput className="h-3.5 w-3.5" /> Move to group
-            </DropdownMenuLabel>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={() => handleMove(null)}>
-              <span className="flex-1">No group</span>
-              {!deck.group_id && <Check className="h-3.5 w-3.5" />}
-            </DropdownMenuItem>
-            {groups.length > 0 && <DropdownMenuSeparator />}
-            {groups.map((g) => (
-              <DropdownMenuItem key={g.id} onClick={() => handleMove(g.id)}>
-                <span className="flex-1 truncate">{g.name}</span>
-                {deck.group_id === g.id && <Check className="h-3.5 w-3.5" />}
-              </DropdownMenuItem>
-            ))}
-            {groups.length === 0 && (
-              <div className="px-2 py-1.5 text-xs text-muted-foreground">
-                Create a group from the sidebar.
-              </div>
-            )}
-          </DropdownMenuContent>
-        </DropdownMenu>
       </div>
     </motion.div>
   );
