@@ -12,7 +12,7 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-const MAX_TEXT = 600_000;
+const MAX_TEXT = 1_200_000;
 const MIN_TEXT_QUALITY = 400; // chars across whole doc; below this trigger full OCR
 const MIN_PAGE_CHARS = 120; // per-page threshold; sparse pages get OCR'd individually
 const AI_MAX_OUTPUT_TOKENS = 32_768;
