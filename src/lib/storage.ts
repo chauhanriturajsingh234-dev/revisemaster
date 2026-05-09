@@ -20,7 +20,7 @@ export type Deck = {
   group_id: string | null;
 };
 
-export type DeckWithStats = Deck & { cardCount: number; dueCount: number };
+export type DeckWithStats = Deck & { cardCount: number; dueCount: number; retainedCount: number };
 
 export type DeckGroup = {
   id: string;
@@ -41,18 +41,35 @@ export async function listDecks(): Promise<DeckWithStats[]> {
   if (error) throw error;
   if (!decks?.length) return [];
 
-  const { data: cards } = await supabase
-    .from("cards")
-    .select("deck_id, due_at")
-    .in("deck_id", decks.map((d) => d.id));
+  // Page through cards to bypass the default 1000-row Supabase limit so
+  // decks with many cards report accurate counts.
+  const deckIds = decks.map((d) => d.id);
+  const PAGE = 1000;
+  const allCards: { deck_id: string; due_at: string; reps: number }[] = [];
+  let from = 0;
+  while (true) {
+    const { data, error: cardsErr } = await supabase
+      .from("cards")
+      .select("deck_id, due_at, reps")
+      .in("deck_id", deckIds)
+      .range(from, from + PAGE - 1);
+    if (cardsErr) throw cardsErr;
+    if (!data?.length) break;
+    allCards.push(...data);
+    if (data.length < PAGE) break;
+    from += PAGE;
+  }
 
   const nowISO = new Date().toISOString();
   return decks.map((d) => {
-    const cs = (cards ?? []).filter((c) => c.deck_id === d.id);
+    const cs = allCards.filter((c) => c.deck_id === d.id);
     return {
       ...d,
       cardCount: cs.length,
       dueCount: cs.filter((c) => c.due_at <= nowISO).length,
+      // "Retained" = cards that have been successfully reviewed at least once
+      // and are not currently due for review again.
+      retainedCount: cs.filter((c) => c.reps > 0 && c.due_at > nowISO).length,
     };
   });
 }

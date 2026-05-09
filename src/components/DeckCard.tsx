@@ -26,7 +26,8 @@ export function DeckCard({
 }) {
   const total = deck.cardCount;
   const due = deck.dueCount;
-  const progress = total === 0 ? 0 : Math.round(((total - due) / total) * 100);
+  const retained = deck.retainedCount ?? Math.max(0, total - due);
+  const progress = total === 0 ? 0 : Math.round((retained / total) * 100);
 
   const handleMove = async (groupId: string | null) => {
     try {
