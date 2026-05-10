@@ -2,6 +2,7 @@ import { Link, useNavigate } from "@tanstack/react-router";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { LogOut } from "lucide-react";
+import { ThemeToggle } from "@/components/ThemeToggle";
 
 export function SiteHeader() {
   const { user, signOut } = useAuth();
@@ -55,10 +56,12 @@ export function SiteHeader() {
                 <LogOut className="h-3.5 w-3.5" /> Sign out
               </Button>
             </>
-          ) : (
+          ) : null}
+          <ThemeToggle />
+          {!user && (
             <Link
               to="/auth"
-              className="px-4 py-1.5 rounded-full bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors"
+              className="px-4 py-1.5 rounded-full bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors ml-1"
             >
               Sign in
             </Link>
