@@ -56,7 +56,6 @@ export function SiteHeader() {
                 <LogOut className="h-3.5 w-3.5" /> Sign out
               </Button>
             </>
-            </>
           ) : null}
           <ThemeToggle />
           {!user && (
