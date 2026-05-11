@@ -87,17 +87,6 @@ function DocumentsPage() {
 
   if (!loading && !user) return <Navigate to="/auth" />;
 
-  const handleUpload = async (file: File) => {
-    if (!user) return;
-    if (file.size > MAX_BYTES) {
-      toast.error("File is too large (30MB max).");
-      return;
-    }
-    if (!ACCEPTED_MIMES.has(file.type) && !/\.(pdf|docx|txt)$/i.test(file.name)) {
-      toast.error("Only PDF, DOCX, or TXT files are supported.");
-      return;
-    }
-
   const processSingleFile = async (file: File) => {
     if (!user) return;
     if (file.size > MAX_BYTES) {
