@@ -268,7 +268,7 @@ function DocumentsPage() {
             <Upload className="h-6 w-6" />
           </div>
           <p className="font-display text-xl mb-1">Drop a file here</p>
-          <p className="text-sm text-muted-foreground mb-5">PDF, DOCX, or TXT — up to 30MB</p>
+          <p className="text-sm text-muted-foreground mb-5">PDF, DOCX, TXT, or ZIP — up to 30MB</p>
           <input
             ref={fileRef}
             type="file"
