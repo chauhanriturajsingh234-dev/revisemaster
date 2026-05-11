@@ -8,6 +8,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { Upload, FileText, Download, Trash2, Sparkles, Loader2, AlertCircle, CheckCircle2 } from "lucide-react";
 import { toast } from "sonner";
 import { uploadToCloudinary } from "@/lib/cloudinary";
+import JSZip from "jszip";
 
 type DocRow = {
   id: string;
@@ -21,13 +22,24 @@ type DocRow = {
   created_at: string;
 };
 
-const ACCEPTED = ".pdf,.docx,.txt";
+const ACCEPTED = ".pdf,.docx,.txt,.zip";
 const MAX_BYTES = 30 * 1024 * 1024;
 const ACCEPTED_MIMES = new Set([
   "application/pdf",
   "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
   "text/plain",
+  "application/zip",
+  "application/x-zip-compressed",
+  "multipart/x-zip",
 ]);
+
+function inferMime(name: string): string {
+  const ext = name.toLowerCase().split(".").pop();
+  if (ext === "pdf") return "application/pdf";
+  if (ext === "docx") return "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+  if (ext === "txt") return "text/plain";
+  return "application/octet-stream";
+}
 
 export const Route = createFileRoute("/documents")({
   head: () => ({
@@ -75,60 +87,93 @@ function DocumentsPage() {
 
   if (!loading && !user) return <Navigate to="/auth" />;
 
-  const handleUpload = async (file: File) => {
+  const processSingleFile = async (file: File) => {
     if (!user) return;
     if (file.size > MAX_BYTES) {
-      toast.error("File is too large (30MB max).");
+      toast.error(`"${file.name}" is too large (30MB max).`);
       return;
     }
-    if (!ACCEPTED_MIMES.has(file.type) && !/\.(pdf|docx|txt)$/i.test(file.name)) {
-      toast.error("Only PDF, DOCX, or TXT files are supported.");
-      return;
+    const mime = file.type || inferMime(file.name);
+    const uploaded = await uploadToCloudinary(file, {
+      folder: `revisemaster/${user.id}`,
+      kind: "document",
+    });
+
+    const { data: doc, error: insErr } = await supabase
+      .from("documents")
+      .insert({
+        user_id: user.id,
+        filename: file.name,
+        storage_path: uploaded.secure_url,
+        mime_type: mime,
+        size_bytes: file.size,
+        status: "uploaded",
+      })
+      .select("id")
+      .single();
+    if (insErr) throw insErr;
+
+    const { data: fnData, error: fnErr } = await supabase.functions.invoke("process-document", {
+      body: { documentId: doc.id },
+    });
+    if (fnErr || fnData?.ok === false) {
+      const rawMessage = fnErr?.message ?? fnData?.error ?? "Processing failed to start";
+      const message = rawMessage.includes("Cloudinary PDF delivery is disabled")
+        ? "Cloudinary is blocking PDF delivery. In Cloudinary, go to Settings → Security and enable PDF and ZIP file delivery, then retry."
+        : rawMessage.includes("Cloudinary is blocking delivery")
+          ? "Cloudinary is blocking this document type. Check Cloudinary Settings → Security, then retry."
+        : rawMessage.includes("AI credits exhausted")
+        ? "AI credits are exhausted. Add credits in workspace settings to generate flashcards."
+        : rawMessage.includes("AI rate limit")
+          ? "AI is temporarily rate limited. Please wait a moment and try again."
+          : `"${file.name}": ${rawMessage}`;
+      toast.error(message);
+    } else if (fnData?.usedFallback) {
+      toast.warning(fnData.fallbackReason ?? "AI unavailable — generated rule-based cards instead.");
+    }
+  };
+
+  const handleUpload = async (file: File) => {
+    if (!user) return;
+    const isZip = /\.zip$/i.test(file.name) || file.type === "application/zip" || file.type === "application/x-zip-compressed";
+
+    if (!isZip) {
+      if (!ACCEPTED_MIMES.has(file.type) && !/\.(pdf|docx|txt)$/i.test(file.name)) {
+        toast.error("Only PDF, DOCX, TXT, or ZIP files are supported.");
+        return;
+      }
     }
 
     setUploading(true);
     try {
-      // Upload directly to Cloudinary (unsigned preset). Returns a public secure_url.
-      const uploaded = await uploadToCloudinary(file, {
-        folder: `revisemaster/${user.id}`,
-        kind: "document",
-      });
-      const storagePath = uploaded.secure_url;
-
-      const { data: doc, error: insErr } = await supabase
-        .from("documents")
-        .insert({
-          user_id: user.id,
-          filename: file.name,
-          storage_path: storagePath,
-          mime_type: file.type || "application/octet-stream",
-          size_bytes: file.size,
-          status: "uploaded",
-        })
-        .select("id")
-        .single();
-      if (insErr) throw insErr;
-
-      toast.success("Uploaded — generating flashcards…");
-      await refresh();
-
-      const { data: fnData, error: fnErr } = await supabase.functions.invoke("process-document", {
-        body: { documentId: doc.id },
-      });
-      if (fnErr || fnData?.ok === false) {
-        const rawMessage = fnErr?.message ?? fnData?.error ?? "Processing failed to start";
-        const message = rawMessage.includes("Cloudinary PDF delivery is disabled")
-          ? "Cloudinary is blocking PDF delivery. In Cloudinary, go to Settings → Security and enable PDF and ZIP file delivery, then retry."
-          : rawMessage.includes("Cloudinary is blocking delivery")
-            ? "Cloudinary is blocking this document type. Check Cloudinary Settings → Security, then retry."
-          : rawMessage.includes("AI credits exhausted")
-          ? "AI credits are exhausted. Add credits in workspace settings to generate flashcards."
-          : rawMessage.includes("AI rate limit")
-            ? "AI is temporarily rate limited. Please wait a moment and try again."
-            : `Processing failed to start: ${rawMessage}`;
-        toast.error(message);
-      } else if (fnData?.usedFallback) {
-        toast.warning(fnData.fallbackReason ?? "AI unavailable — generated rule-based cards instead.");
+      if (isZip) {
+        const zip = await JSZip.loadAsync(file);
+        const entries = Object.values(zip.files).filter(
+          (e) => !e.dir && /\.(pdf|docx|txt)$/i.test(e.name) && !e.name.split("/").pop()!.startsWith("."),
+        );
+        if (entries.length === 0) {
+          toast.error("No PDF, DOCX, or TXT files found inside the zip.");
+          return;
+        }
+        toast.success(`Found ${entries.length} file${entries.length > 1 ? "s" : ""} — processing…`);
+        let ok = 0;
+        for (const entry of entries) {
+          try {
+            const blob = await entry.async("blob");
+            const baseName = entry.name.split("/").pop() || entry.name;
+            const innerFile = new File([blob], baseName, { type: inferMime(baseName) });
+            await processSingleFile(innerFile);
+            await refresh();
+            ok += 1;
+          } catch (err) {
+            toast.error(`${entry.name}: ${err instanceof Error ? err.message : "failed"}`);
+          }
+        }
+        if (ok > 0) toast.success(`Generated decks from ${ok} of ${entries.length} files.`);
+      } else {
+        await processSingleFile(file);
+        toast.success("Uploaded — generating flashcards…");
+        await refresh();
       }
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Upload failed");
@@ -223,7 +268,7 @@ function DocumentsPage() {
             <Upload className="h-6 w-6" />
           </div>
           <p className="font-display text-xl mb-1">Drop a file here</p>
-          <p className="text-sm text-muted-foreground mb-5">PDF, DOCX, or TXT — up to 30MB</p>
+          <p className="text-sm text-muted-foreground mb-5">PDF, DOCX, TXT, or ZIP — up to 30MB</p>
           <input
             ref={fileRef}
             type="file"
