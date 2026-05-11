@@ -22,13 +22,24 @@ type DocRow = {
   created_at: string;
 };
 
-const ACCEPTED = ".pdf,.docx,.txt";
+const ACCEPTED = ".pdf,.docx,.txt,.zip";
 const MAX_BYTES = 30 * 1024 * 1024;
 const ACCEPTED_MIMES = new Set([
   "application/pdf",
   "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
   "text/plain",
+  "application/zip",
+  "application/x-zip-compressed",
+  "multipart/x-zip",
 ]);
+
+function inferMime(name: string): string {
+  const ext = name.toLowerCase().split(".").pop();
+  if (ext === "pdf") return "application/pdf";
+  if (ext === "docx") return "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+  if (ext === "txt") return "text/plain";
+  return "application/octet-stream";
+}
 
 export const Route = createFileRoute("/documents")({
   head: () => ({
