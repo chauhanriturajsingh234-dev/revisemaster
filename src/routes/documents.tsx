@@ -8,6 +8,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { Upload, FileText, Download, Trash2, Sparkles, Loader2, AlertCircle, CheckCircle2 } from "lucide-react";
 import { toast } from "sonner";
 import { uploadToCloudinary } from "@/lib/cloudinary";
+import JSZip from "jszip";
 
 type DocRow = {
   id: string;
