@@ -10,20 +10,29 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
+import { Route as McpRouteImport } from './routes/mcp'
 import { Route as ImportAnkiRouteImport } from './routes/import-anki'
 import { Route as DocumentsRouteImport } from './routes/documents'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as DeckDeckIdRouteImport } from './routes/deck.$deckId'
+import { Route as Char91DotwellKnownChar93OauthProtectedResourceRouteImport } from './routes/[.well-known]/oauth-protected-resource'
+import { Route as Char91DotmcpChar93ListToolsRouteImport } from './routes/[.mcp]/list-tools'
 import { Route as DeckDeckIdStudyRouteImport } from './routes/deck_.$deckId.study'
 import { Route as DeckDeckIdSmcqRouteImport } from './routes/deck_.$deckId.smcq'
 import { Route as DeckDeckIdQuizRouteImport } from './routes/deck_.$deckId.quiz'
 import { Route as DeckDeckIdPairmcqRouteImport } from './routes/deck_.$deckId.pairmcq'
 import { Route as ApiCloudinarySignatureRouteImport } from './routes/api.cloudinary.signature'
+import { Route as Char91DotmcpChar93InvokeToolToolRouteImport } from './routes/[.mcp]/invoke-tool/$tool'
 
 const ResetPasswordRoute = ResetPasswordRouteImport.update({
   id: '/reset-password',
   path: '/reset-password',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const McpRoute = McpRouteImport.update({
+  id: '/mcp',
+  path: '/mcp',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ImportAnkiRoute = ImportAnkiRouteImport.update({
@@ -51,6 +60,18 @@ const DeckDeckIdRoute = DeckDeckIdRouteImport.update({
   path: '/deck/$deckId',
   getParentRoute: () => rootRouteImport,
 } as any)
+const Char91DotwellKnownChar93OauthProtectedResourceRoute =
+  Char91DotwellKnownChar93OauthProtectedResourceRouteImport.update({
+    id: '/.well-known/oauth-protected-resource',
+    path: '/.well-known/oauth-protected-resource',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const Char91DotmcpChar93ListToolsRoute =
+  Char91DotmcpChar93ListToolsRouteImport.update({
+    id: '/.mcp/list-tools',
+    path: '/.mcp/list-tools',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const DeckDeckIdStudyRoute = DeckDeckIdStudyRouteImport.update({
   id: '/deck_/$deckId/study',
   path: '/deck/$deckId/study',
@@ -76,14 +97,24 @@ const ApiCloudinarySignatureRoute = ApiCloudinarySignatureRouteImport.update({
   path: '/api/cloudinary/signature',
   getParentRoute: () => rootRouteImport,
 } as any)
+const Char91DotmcpChar93InvokeToolToolRoute =
+  Char91DotmcpChar93InvokeToolToolRouteImport.update({
+    id: '/.mcp/invoke-tool/$tool',
+    path: '/.mcp/invoke-tool/$tool',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/documents': typeof DocumentsRoute
   '/import-anki': typeof ImportAnkiRoute
+  '/mcp': typeof McpRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/.mcp/list-tools': typeof Char91DotmcpChar93ListToolsRoute
+  '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   '/deck/$deckId': typeof DeckDeckIdRoute
+  '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
   '/api/cloudinary/signature': typeof ApiCloudinarySignatureRoute
   '/deck/$deckId/pairmcq': typeof DeckDeckIdPairmcqRoute
   '/deck/$deckId/quiz': typeof DeckDeckIdQuizRoute
@@ -95,8 +126,12 @@ export interface FileRoutesByTo {
   '/auth': typeof AuthRoute
   '/documents': typeof DocumentsRoute
   '/import-anki': typeof ImportAnkiRoute
+  '/mcp': typeof McpRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/.mcp/list-tools': typeof Char91DotmcpChar93ListToolsRoute
+  '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   '/deck/$deckId': typeof DeckDeckIdRoute
+  '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
   '/api/cloudinary/signature': typeof ApiCloudinarySignatureRoute
   '/deck/$deckId/pairmcq': typeof DeckDeckIdPairmcqRoute
   '/deck/$deckId/quiz': typeof DeckDeckIdQuizRoute
@@ -109,8 +144,12 @@ export interface FileRoutesById {
   '/auth': typeof AuthRoute
   '/documents': typeof DocumentsRoute
   '/import-anki': typeof ImportAnkiRoute
+  '/mcp': typeof McpRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/.mcp/list-tools': typeof Char91DotmcpChar93ListToolsRoute
+  '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   '/deck/$deckId': typeof DeckDeckIdRoute
+  '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
   '/api/cloudinary/signature': typeof ApiCloudinarySignatureRoute
   '/deck_/$deckId/pairmcq': typeof DeckDeckIdPairmcqRoute
   '/deck_/$deckId/quiz': typeof DeckDeckIdQuizRoute
@@ -124,8 +163,12 @@ export interface FileRouteTypes {
     | '/auth'
     | '/documents'
     | '/import-anki'
+    | '/mcp'
     | '/reset-password'
+    | '/.mcp/list-tools'
+    | '/.well-known/oauth-protected-resource'
     | '/deck/$deckId'
+    | '/.mcp/invoke-tool/$tool'
     | '/api/cloudinary/signature'
     | '/deck/$deckId/pairmcq'
     | '/deck/$deckId/quiz'
@@ -137,8 +180,12 @@ export interface FileRouteTypes {
     | '/auth'
     | '/documents'
     | '/import-anki'
+    | '/mcp'
     | '/reset-password'
+    | '/.mcp/list-tools'
+    | '/.well-known/oauth-protected-resource'
     | '/deck/$deckId'
+    | '/.mcp/invoke-tool/$tool'
     | '/api/cloudinary/signature'
     | '/deck/$deckId/pairmcq'
     | '/deck/$deckId/quiz'
@@ -150,8 +197,12 @@ export interface FileRouteTypes {
     | '/auth'
     | '/documents'
     | '/import-anki'
+    | '/mcp'
     | '/reset-password'
+    | '/.mcp/list-tools'
+    | '/.well-known/oauth-protected-resource'
     | '/deck/$deckId'
+    | '/.mcp/invoke-tool/$tool'
     | '/api/cloudinary/signature'
     | '/deck_/$deckId/pairmcq'
     | '/deck_/$deckId/quiz'
@@ -164,8 +215,12 @@ export interface RootRouteChildren {
   AuthRoute: typeof AuthRoute
   DocumentsRoute: typeof DocumentsRoute
   ImportAnkiRoute: typeof ImportAnkiRoute
+  McpRoute: typeof McpRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
+  Char91DotmcpChar93ListToolsRoute: typeof Char91DotmcpChar93ListToolsRoute
+  Char91DotwellKnownChar93OauthProtectedResourceRoute: typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   DeckDeckIdRoute: typeof DeckDeckIdRoute
+  Char91DotmcpChar93InvokeToolToolRoute: typeof Char91DotmcpChar93InvokeToolToolRoute
   ApiCloudinarySignatureRoute: typeof ApiCloudinarySignatureRoute
   DeckDeckIdPairmcqRoute: typeof DeckDeckIdPairmcqRoute
   DeckDeckIdQuizRoute: typeof DeckDeckIdQuizRoute
@@ -180,6 +235,13 @@ declare module '@tanstack/react-router' {
       path: '/reset-password'
       fullPath: '/reset-password'
       preLoaderRoute: typeof ResetPasswordRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/mcp': {
+      id: '/mcp'
+      path: '/mcp'
+      fullPath: '/mcp'
+      preLoaderRoute: typeof McpRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/import-anki': {
@@ -217,6 +279,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DeckDeckIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/.well-known/oauth-protected-resource': {
+      id: '/.well-known/oauth-protected-resource'
+      path: '/.well-known/oauth-protected-resource'
+      fullPath: '/.well-known/oauth-protected-resource'
+      preLoaderRoute: typeof Char91DotwellKnownChar93OauthProtectedResourceRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/.mcp/list-tools': {
+      id: '/.mcp/list-tools'
+      path: '/.mcp/list-tools'
+      fullPath: '/.mcp/list-tools'
+      preLoaderRoute: typeof Char91DotmcpChar93ListToolsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/deck_/$deckId/study': {
       id: '/deck_/$deckId/study'
       path: '/deck/$deckId/study'
@@ -252,6 +328,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiCloudinarySignatureRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/.mcp/invoke-tool/$tool': {
+      id: '/.mcp/invoke-tool/$tool'
+      path: '/.mcp/invoke-tool/$tool'
+      fullPath: '/.mcp/invoke-tool/$tool'
+      preLoaderRoute: typeof Char91DotmcpChar93InvokeToolToolRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -260,8 +343,13 @@ const rootRouteChildren: RootRouteChildren = {
   AuthRoute: AuthRoute,
   DocumentsRoute: DocumentsRoute,
   ImportAnkiRoute: ImportAnkiRoute,
+  McpRoute: McpRoute,
   ResetPasswordRoute: ResetPasswordRoute,
+  Char91DotmcpChar93ListToolsRoute: Char91DotmcpChar93ListToolsRoute,
+  Char91DotwellKnownChar93OauthProtectedResourceRoute:
+    Char91DotwellKnownChar93OauthProtectedResourceRoute,
   DeckDeckIdRoute: DeckDeckIdRoute,
+  Char91DotmcpChar93InvokeToolToolRoute: Char91DotmcpChar93InvokeToolToolRoute,
   ApiCloudinarySignatureRoute: ApiCloudinarySignatureRoute,
   DeckDeckIdPairmcqRoute: DeckDeckIdPairmcqRoute,
   DeckDeckIdQuizRoute: DeckDeckIdQuizRoute,
