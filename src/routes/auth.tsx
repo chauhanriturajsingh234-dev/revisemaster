@@ -14,6 +14,9 @@ const schema = z.object({
 });
 
 export const Route = createFileRoute("/auth")({
+  validateSearch: (s: Record<string, unknown>) => ({
+    next: typeof s.next === "string" ? s.next : undefined,
+  }),
   head: () => ({
     meta: [
       { title: "Sign in — ReviseMaster" },
@@ -23,17 +26,28 @@ export const Route = createFileRoute("/auth")({
   component: AuthPage,
 });
 
+// Only follow same-origin relative redirects.
+function safeNext(next: string | undefined): string | null {
+  if (!next || !next.startsWith("/") || next.startsWith("//")) return null;
+  return next;
+}
+
 function AuthPage() {
   const navigate = useNavigate();
   const { user, loading } = useAuth();
+  const search = Route.useSearch();
+  const next = safeNext(search.next);
   const [mode, setMode] = useState<"signin" | "signup" | "forgot">("signin");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
-    if (!loading && user) navigate({ to: "/" });
-  }, [user, loading, navigate]);
+    if (!loading && user) {
+      if (next) window.location.replace(next);
+      else navigate({ to: "/" });
+    }
+  }, [user, loading, navigate, next]);
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -67,11 +81,12 @@ function AuthPage() {
     }
     setBusy(true);
     try {
+      const returnTo = next ? `${window.location.origin}${next}` : `${window.location.origin}/`;
       if (mode === "signup") {
         const { error } = await supabase.auth.signUp({
           email: parsed.data.email,
           password: parsed.data.password,
-          options: { emailRedirectTo: `${window.location.origin}/` },
+          options: { emailRedirectTo: returnTo },
         });
         if (error) throw error;
         toast.success("Account created. Welcome!");
@@ -83,7 +98,8 @@ function AuthPage() {
         if (error) throw error;
         toast.success("Welcome back!");
       }
-      navigate({ to: "/" });
+      if (next) window.location.replace(next);
+      else navigate({ to: "/" });
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Something went wrong";
       toast.error(msg.includes("already registered") ? "Email already in use — try signing in." : msg);
