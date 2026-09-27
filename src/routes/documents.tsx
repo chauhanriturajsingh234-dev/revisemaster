@@ -89,21 +89,26 @@ function DocumentsPage() {
   const processSingleFile = async (file: File) => {
     if (!user) return;
     if (file.size > MAX_BYTES) {
-      toast.error(`"${file.name}" is too large (30MB max).`);
+      toast.error(`"${file.name}" is too large (20MB max).`);
       return;
     }
     const mime = file.type || inferMime(file.name);
-    const uploaded = await uploadToCloudinary(file, {
-      folder: `revisemaster/${user.id}`,
-      kind: "document",
-    });
+
+    // Upload to the app's private cloud storage. The first path segment must be
+    // the user id (enforced by the bucket's RLS policies).
+    const safeName = file.name.replace(/[^\w.\-]+/g, "_");
+    const storagePath = `${user.id}/${Date.now()}-${safeName}`;
+    const { error: upErr } = await supabase.storage
+      .from("documents")
+      .upload(storagePath, file, { contentType: mime, upsert: false });
+    if (upErr) throw upErr;
 
     const { data: doc, error: insErr } = await supabase
       .from("documents")
       .insert({
         user_id: user.id,
         filename: file.name,
-        storage_path: uploaded.secure_url,
+        storage_path: storagePath,
         mime_type: mime,
         size_bytes: file.size,
         status: "uploaded",
@@ -267,7 +272,7 @@ function DocumentsPage() {
             <Upload className="h-6 w-6" />
           </div>
           <p className="font-display text-xl mb-1">Drop a file here</p>
-          <p className="text-sm text-muted-foreground mb-5">PDF, DOCX, TXT, or ZIP — up to 30MB</p>
+          <p className="text-sm text-muted-foreground mb-5">PDF, DOCX, TXT, or ZIP — up to 20MB</p>
           <input
             ref={fileRef}
             type="file"
