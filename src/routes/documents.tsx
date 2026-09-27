@@ -207,6 +207,10 @@ function DocumentsPage() {
     try {
       const { error } = await supabase.from("documents").delete().eq("id", doc.id);
       if (error) throw error;
+      // Remove the stored file too (legacy Cloudinary URLs are left as-is).
+      if (!/^https?:\/\//i.test(doc.storage_path)) {
+        await supabase.storage.from("documents").remove([doc.storage_path]);
+      }
       setDocs(docs.filter((d) => d.id !== doc.id));
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Delete failed");
