@@ -160,41 +160,53 @@ export async function generateDeckFromDocumentText(input: {
   const requestedTotal = estimateDeckSize(input.text.length);
   const chunkTargets = distributeTargets(requestedTotal, chunks);
 
-  const results: GeneratedDeck[] = [];
-  for (let index = 0; index < chunks.length; index += 1) {
+  // Parallel (bounded) with a global deadline so big documents finish before
+  // the function's wall-clock limit kills it mid-way (leaving it "processing").
+  const startedAt = Date.now();
+  const DEADLINE_MS = 100_000;
+  const CONCURRENCY = 5;
+  const slots: (GeneratedDeck | null)[] = chunks.map(() => null);
+  const elapsed = () => Date.now() - startedAt;
+
+  const processChunk = async (index: number) => {
+    if (elapsed() > DEADLINE_MS) return;
     const maxItems = chunkTargets[index];
     const minItems = minimumAcceptableCards(maxItems);
-
-    const firstPass = sanitizeDeck(
-      await input.requestChunkCards({
-        chunk: chunks[index],
-        filename: input.filename,
-        maxItems,
-        minItems,
-        chunkIndex: index,
-        totalChunks: chunks.length,
-      }),
-    );
-
-    if (firstPass.cards.length >= minItems || chunks[index].length < 1_200) {
-      results.push(firstPass);
-      continue;
+    try {
+      const firstPass = sanitizeDeck(
+        await input.requestChunkCards({
+          chunk: chunks[index], filename: input.filename, maxItems, minItems,
+          chunkIndex: index, totalChunks: chunks.length,
+        }),
+      );
+      if (firstPass.cards.length >= minItems || chunks[index].length < 1_200 || elapsed() > DEADLINE_MS * 0.5) {
+        slots[index] = firstPass;
+        return;
+      }
+      const retryPass = sanitizeDeck(
+        await input.requestChunkCards({
+          chunk: chunks[index], filename: input.filename, maxItems, minItems,
+          chunkIndex: index, totalChunks: chunks.length,
+          retryHint: `Previous pass returned only ${firstPass.cards.length} cards out of the requested ${maxItems}. Add overlooked facts, formulas, tables, examples, section-end details, and list items from this chunk.`,
+        }),
+      );
+      slots[index] = mergeDeckResults(firstPass, retryPass);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      if (index === 0 || msg.includes("credits exhausted")) throw e;
+      console.warn(`Chunk ${index + 1} failed:`, msg);
     }
+  };
 
-    const retryPass = sanitizeDeck(
-      await input.requestChunkCards({
-        chunk: chunks[index],
-        filename: input.filename,
-        maxItems,
-        minItems,
-        chunkIndex: index,
-        totalChunks: chunks.length,
-        retryHint: `Previous pass returned only ${firstPass.cards.length} cards out of the requested ${maxItems}. Add overlooked facts, formulas, tables, examples, section-end details, and list items from this chunk.`,
-      }),
-    );
-
-    results.push(mergeDeckResults(firstPass, retryPass));
-  }
+  let next = 0;
+  const worker = async () => {
+    while (next < chunks.length) {
+      const i = next++;
+      await processChunk(i);
+    }
+  };
+  await Promise.all(Array.from({ length: Math.min(CONCURRENCY, chunks.length) }, worker));
+  const results = slots.filter((r): r is GeneratedDeck => r !== null);
 
   const primary = results.find((result) => result.cards.length > 0) ?? {
     name: "Study Deck",
