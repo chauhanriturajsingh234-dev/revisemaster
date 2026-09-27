@@ -1,0 +1,1 @@
+update public.documents set status='failed', error='Processing timed out — please retry.' where status='processing' and updated_at < now() - interval '10 minutes';

@@ -356,7 +356,9 @@ function DocItem({
             </a>
           </Button>
         )}
-        {doc.status === "failed" && (
+        {(doc.status === "failed" ||
+          ((doc.status === "processing" || doc.status === "uploaded") &&
+            Date.now() - new Date(doc.created_at).getTime() > 4 * 60 * 1000)) && (
           <Button variant="ghost" size="sm" onClick={onRetry}>
             Retry
           </Button>
