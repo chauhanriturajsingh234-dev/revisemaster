@@ -7,7 +7,6 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { Upload, FileText, Download, Trash2, Sparkles, Loader2, AlertCircle, CheckCircle2 } from "lucide-react";
 import { toast } from "sonner";
-import { uploadToCloudinary } from "@/lib/cloudinary";
 import JSZip from "jszip";
 
 type DocRow = {
@@ -23,7 +22,7 @@ type DocRow = {
 };
 
 const ACCEPTED = ".pdf,.docx,.txt,.zip";
-const MAX_BYTES = 30 * 1024 * 1024;
+const MAX_BYTES = 20 * 1024 * 1024;
 const ACCEPTED_MIMES = new Set([
   "application/pdf",
   "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
@@ -90,21 +89,26 @@ function DocumentsPage() {
   const processSingleFile = async (file: File) => {
     if (!user) return;
     if (file.size > MAX_BYTES) {
-      toast.error(`"${file.name}" is too large (30MB max).`);
+      toast.error(`"${file.name}" is too large (20MB max).`);
       return;
     }
     const mime = file.type || inferMime(file.name);
-    const uploaded = await uploadToCloudinary(file, {
-      folder: `revisemaster/${user.id}`,
-      kind: "document",
-    });
+
+    // Upload to the app's private cloud storage. The first path segment must be
+    // the user id (enforced by the bucket's RLS policies).
+    const safeName = file.name.replace(/[^\w.\-]+/g, "_");
+    const storagePath = `${user.id}/${Date.now()}-${safeName}`;
+    const { error: upErr } = await supabase.storage
+      .from("documents")
+      .upload(storagePath, file, { contentType: mime, upsert: false });
+    if (upErr) throw upErr;
 
     const { data: doc, error: insErr } = await supabase
       .from("documents")
       .insert({
         user_id: user.id,
         filename: file.name,
-        storage_path: uploaded.secure_url,
+        storage_path: storagePath,
         mime_type: mime,
         size_bytes: file.size,
         status: "uploaded",
@@ -203,6 +207,10 @@ function DocumentsPage() {
     try {
       const { error } = await supabase.from("documents").delete().eq("id", doc.id);
       if (error) throw error;
+      // Remove the stored file too (legacy Cloudinary URLs are left as-is).
+      if (!/^https?:\/\//i.test(doc.storage_path)) {
+        await supabase.storage.from("documents").remove([doc.storage_path]);
+      }
       setDocs(docs.filter((d) => d.id !== doc.id));
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Delete failed");
@@ -268,7 +276,7 @@ function DocumentsPage() {
             <Upload className="h-6 w-6" />
           </div>
           <p className="font-display text-xl mb-1">Drop a file here</p>
-          <p className="text-sm text-muted-foreground mb-5">PDF, DOCX, TXT, or ZIP — up to 30MB</p>
+          <p className="text-sm text-muted-foreground mb-5">PDF, DOCX, TXT, or ZIP — up to 20MB</p>
           <input
             ref={fileRef}
             type="file"
